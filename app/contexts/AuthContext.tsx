@@ -1,17 +1,23 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import type { ReactNode } from 'react';
 
 type User = {
-  id: string;
+  id: number;
   username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  dob?: string;
   avatarUrl?: string;
 };
 
 type AuthContextType = {
   isLoggedIn: boolean;
   user: User | null;
-  login: (user: User) => void;
+  roles: string[];
+  login: (accessToken: string, user: User, roles: string[]) => void;
   logout: () => void;
+  getToken: () => string | null;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -31,21 +37,51 @@ type AuthProviderProps = {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [roles, setRoles] = useState<string[]>([]);
 
-  const login = (userData: User) => {
+  // Check if user is already logged in on mount
+  useEffect(() => {
+    const savedToken = localStorage.getItem('accessToken');
+    const savedUser = localStorage.getItem('user');
+    const savedRoles = localStorage.getItem('roles');
+    
+    if (savedToken && savedUser && savedRoles) {
+      setIsLoggedIn(true);
+      setUser(JSON.parse(savedUser));
+      setRoles(JSON.parse(savedRoles));
+    }
+  }, []);
+
+  const login = (accessToken: string, userData: User, userRoles: string[]) => {
+    // Store in state
     setUser(userData);
+    setRoles(userRoles);
     setIsLoggedIn(true);
-    // In a real app, you might store user data in localStorage or a secure cookie
+    
+    // Store in localStorage for persistence
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('roles', JSON.stringify(userRoles));
   };
 
   const logout = () => {
+    // Clear state
     setUser(null);
+    setRoles([]);
     setIsLoggedIn(false);
-    // In a real app, you'd clear localStorage, cookies, etc.
+    
+    // Clear localStorage
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('user');
+    localStorage.removeItem('roles');
+  };
+
+  const getToken = (): string | null => {
+    return localStorage.getItem('accessToken');
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, user, login, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, user, roles, login, logout, getToken }}>
       {children}
     </AuthContext.Provider>
   );

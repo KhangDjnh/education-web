@@ -10,9 +10,7 @@ import {
 import type { Route } from "./+types/root";
 import "./app.css";
 import "./styles/slick.css";
-import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { AuthProvider } from "./contexts/AuthContext";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -45,19 +43,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Wrapper component to access auth context
+// App content with Auth Provider
 const AppContent = () => {
-  const { isLoggedIn, user } = useAuth();
-  
-  return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar isLoggedIn={isLoggedIn} user={user || undefined} />
-      <main className="flex-grow">
-        <Outlet />
-      </main>
-      <Footer />
-    </div>
-  );
+  return <Outlet />;
 };
 
 export default function App() {

@@ -1,0 +1,56 @@
+import React from "react";
+
+interface ClassCardProps {
+  id: number;
+  name: string;
+  code: string;
+  description: string;
+  semester: string;
+  createdAt: string;
+}
+
+const ClassCard: React.FC<ClassCardProps> = ({
+  id,
+  name,
+  code,
+  description,
+  semester,
+  createdAt,
+}) => {
+  // Format the date
+  const formattedDate = new Date(createdAt).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-300">
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-xl font-bold text-gray-800">{name}</h3>
+          <span className="inline-block bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded-full mt-1">
+            {code}
+          </span>
+        </div>
+        <span className="bg-gray-100 text-gray-700 text-sm px-3 py-1 rounded-lg">
+          {semester}
+        </span>
+      </div>
+      
+      <p className="text-gray-600 mb-4">{description}</p>
+      
+      <div className="flex justify-between items-center pt-2 text-sm text-gray-500 border-t border-gray-100">
+        <span>Created: {formattedDate}</span>
+        <button 
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"
+          onClick={() => window.location.href = `/class/${id}`}
+        >
+          View Class
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default ClassCard; 

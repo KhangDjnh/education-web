@@ -10,6 +10,7 @@ type NavbarProps = {
   user?: {
     username: string;
     avatarUrl?: string;
+    role?: string;
   };
 };
 
@@ -33,6 +34,14 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn = false, user }) => {
     sources: ["Official Documentation", "Community Resources", "Video Tutorials", "Interactive Courses"],
     platforms: ["Web", "Mobile", "Desktop", "Embedded Systems"]
   };
+
+  // User profile dropdown items
+  const userDropdownItems = [
+    { label: "Profile", href: "/profile" },
+    { label: "Teacher Dashboard", href: "/teacher" },
+    { label: "Settings", href: "/settings" },
+    { label: "Sign Out", href: "/signout" }
+  ];
 
   return (
     <nav className="bg-white shadow-md">
@@ -157,12 +166,33 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn = false, user }) => {
 
             {/* User authentication */}
             {isLoggedIn && user ? (
-              <div className="flex items-center">
-                <Avatar 
-                  username={user.username} 
-                  imageUrl={user.avatarUrl}
-                  size="md"
-                />
+              <div className="relative">
+                <div 
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleDropdown("user")}
+                >
+                  <Avatar 
+                    username={user.username} 
+                    imageUrl={user.avatarUrl}
+                    size="md"
+                  />
+                </div>
+                {activeDropdown === "user" && (
+                  <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                    <div className="py-1" role="menu" aria-orientation="vertical">
+                      {userDropdownItems.map((item) => (
+                        <a
+                          key={item.label}
+                          href={item.href}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
+                        >
+                          {item.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex items-center space-x-2">
