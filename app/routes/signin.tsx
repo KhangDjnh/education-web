@@ -63,9 +63,11 @@ export default function SignIn() {
         data.result.roles
       );
       
-      // Check if user has TEACHER role and redirect accordingly
+      // Route based on user role
       if (data.result.roles.includes("TEACHER")) {
         navigate("/teacher");
+      } else if (data.result.roles.includes("STUDENT")) {
+        navigate("/student");
       } else {
         navigate("/");
       }

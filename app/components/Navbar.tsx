@@ -35,13 +35,31 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn = false, user }) => {
     platforms: ["Web", "Mobile", "Desktop", "Embedded Systems"]
   };
 
-  // User profile dropdown items
-  const userDropdownItems = [
-    { label: "Profile", href: "/profile" },
-    { label: "Teacher Dashboard", href: "/teacher" },
-    { label: "Settings", href: "/settings" },
-    { label: "Sign Out", href: "/signout" }
-  ];
+  // User profile dropdown items based on role
+  const getUserMenuItems = () => {
+    const baseItems = [
+      { label: "Profile", href: "/profile" },
+      { label: "Settings", href: "/settings" },
+      { label: "Sign Out", href: "/signout" }
+    ];
+
+    // Add role-specific items
+    if (user?.role === "TEACHER") {
+      return [
+        { label: "Teacher Dashboard", href: "/teacher" },
+        ...baseItems
+      ];
+    } else if (user?.role === "STUDENT") {
+      return [
+        { label: "Student Dashboard", href: "/student" },
+        ...baseItems
+      ];
+    }
+
+    return baseItems;
+  };
+
+  const userDropdownItems = getUserMenuItems();
 
   return (
     <nav className="bg-white shadow-md">

@@ -20,7 +20,7 @@ export default function Home() {
   const navbarUser = user ? {
     username: user.username,
     avatarUrl: user.avatarUrl,
-    role: roles.includes("TEACHER") ? "TEACHER" : "USER"
+    role: roles.includes("TEACHER") ? "TEACHER" : roles.includes("STUDENT") ? "STUDENT" : "USER"
   } : undefined;
 
   return (
@@ -45,24 +45,37 @@ export default function Home() {
                     Welcome back, {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}!
                   </h2>
                   <p className="mt-2 text-gray-600">
-                    {roles.includes("TEACHER") ? "You are logged in as a Teacher" : "You are currently logged in"}
+                    {roles.includes("TEACHER") ? "You are logged in as a Teacher" : 
+                     roles.includes("STUDENT") ? "You are logged in as a Student" : 
+                     "You are currently logged in"}
                   </p>
                   
-                  {roles.includes("TEACHER") && (
-                    <a
-                      href="/teacher"
-                      className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 mr-3"
+                  <div className="mt-4 flex flex-wrap justify-center gap-3">
+                    {roles.includes("TEACHER") && (
+                      <a
+                        href="/teacher"
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                      >
+                        Go to Teacher Dashboard
+                      </a>
+                    )}
+
+                    {roles.includes("STUDENT") && (
+                      <a
+                        href="/student"
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                      >
+                        Go to Student Dashboard
+                      </a>
+                    )}
+                    
+                    <button
+                      onClick={logout}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
                     >
-                      Go to Teacher Dashboard
-                    </a>
-                  )}
-                  
-                  <button
-                    onClick={logout}
-                    className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
-                  >
-                    Log out
-                  </button>
+                      Log out
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
