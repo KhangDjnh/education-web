@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import Navbar from "../components/Navbar";
@@ -26,8 +26,18 @@ export default function SignIn() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  // Check for redirect path on component mount
+  useEffect(() => {
+    const savedRedirectPath = sessionStorage.getItem("redirectAfterLogin");
+    if (savedRedirectPath) {
+      setRedirectPath(savedRedirectPath);
+      console.log("Found saved redirect path:", savedRedirectPath);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,13 +73,22 @@ export default function SignIn() {
         data.result.roles
       );
       
-      // Route based on user role
-      if (data.result.roles.includes("TEACHER")) {
-        navigate("/teacher");
-      } else if (data.result.roles.includes("STUDENT")) {
-        navigate("/student");
+      // Clear the redirect path from storage
+      sessionStorage.removeItem("redirectAfterLogin");
+      
+      // Handle redirect
+      if (redirectPath) {
+        // Navigate to the saved path after login
+        navigate(redirectPath);
       } else {
-        navigate("/");
+        // Default routing based on role if no redirect path
+        if (data.result.roles.includes("TEACHER")) {
+          navigate("/teacher");
+        } else if (data.result.roles.includes("STUDENT")) {
+          navigate("/student");
+        } else {
+          navigate("/");
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred during login");

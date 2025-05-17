@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router";
 
 interface ClassCardProps {
   id: number;
@@ -42,12 +43,12 @@ const ClassCard: React.FC<ClassCardProps> = ({
       
       <div className="flex justify-between items-center pt-2 text-sm text-gray-500 border-t border-gray-100">
         <span>Created: {formattedDate}</span>
-        <button 
+        <Link
+          to={`/class/${id}`}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"
-          onClick={() => window.location.href = `/class/${id}`}
         >
           View Class
-        </button>
+        </Link>
       </div>
     </div>
   );
