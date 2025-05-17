@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import Avatar from "./Avatar";
 import { MagnifyingGlassIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import { useNavigate } from "react-router";
+import { useAuth } from "../contexts/AuthContext";
 
 // Logo path
 const logoPath = "/images/logo/logo.png";
@@ -16,6 +18,8 @@ type NavbarProps = {
 
 export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn = false, user }) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   
   // State for dropdowns
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -28,6 +32,12 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn = false, user }) => {
     }
   };
 
+  const handleSignOut = (e: React.MouseEvent) => {
+    e.preventDefault();
+    logout();
+    navigate("/");
+  };
+
   // Mock data for dropdowns
   const dropdownItems = {
     courses: ["Web Development", "Mobile Development", "Data Science", "AI & Machine Learning", "Cybersecurity"],
@@ -38,20 +48,20 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn = false, user }) => {
   // User profile dropdown items based on role
   const getUserMenuItems = () => {
     const baseItems = [
-      { label: "Profile", href: "/profile" },
-      { label: "Settings", href: "/settings" },
-      { label: "Sign Out", href: "/signout" }
+      { label: "Profile", href: "/profile", action: null },
+      { label: "Settings", href: "/settings", action: null },
+      { label: "Sign Out", href: "#", action: handleSignOut }
     ];
 
     // Add role-specific items
     if (user?.role === "TEACHER") {
       return [
-        { label: "Teacher Dashboard", href: "/teacher" },
+        { label: "Teacher Dashboard", href: "/teacher", action: null },
         ...baseItems
       ];
     } else if (user?.role === "STUDENT") {
       return [
-        { label: "Student Dashboard", href: "/student" },
+        { label: "Student Dashboard", href: "/student", action: null },
         ...baseItems
       ];
     }
@@ -202,6 +212,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn = false, user }) => {
                         <a
                           key={item.label}
                           href={item.href}
+                          onClick={item.action ? (e) => item.action(e) : undefined}
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           role="menuitem"
                         >

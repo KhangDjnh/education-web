@@ -25,52 +25,101 @@ export default function TeacherPage() {
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const { isLoggedIn, getToken, roles, user } = useAuth();
+  const [authChecked, setAuthChecked] = useState<boolean>(false);
+  const { isLoggedIn, getToken, roles, user, validateSession, isInitialized } = useAuth();
   const navigate = useNavigate();
-
+  
+  // Check authentication status when component mounts or auth state changes
   useEffect(() => {
-    // Check if user is logged in and has Teacher role
-    if (!isLoggedIn || !roles.includes("TEACHER")) {
-      navigate("/signin");
-      return;
-    }
-
-    const fetchClasses = async () => {
+    const checkAuth = async () => {
+      // Only proceed if auth has been initialized
+      if (!isInitialized) {
+        console.log("Auth not initialized yet, waiting...");
+        return;
+      }
+      
+      console.log("Checking auth for Teacher page...");
       try {
-        setLoading(true);
-        const token = getToken();
+        // First check local state - faster user experience
+        if (isLoggedIn && roles.includes("TEACHER")) {
+          console.log("Already logged in as teacher from local state");
+          setAuthChecked(true);
+          fetchClasses();
+          return;
+        }
         
-        if (!token) {
-          throw new Error("Authentication token not found");
-        }
-
-        const response = await fetch("http://localhost:8080/education/api/classes/teacher", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Error: ${response.status}`);
-        }
-
-        const data: ApiResponse = await response.json();
+        // Then validate with backend if needed
+        console.log("Validating session with backend...");
+        const isSessionValid = await validateSession();
         
-        if (data.code === 1000) {
-          setClasses(data.result);
-        } else {
-          throw new Error(data.message || "Failed to fetch classes");
+        if (!isSessionValid) {
+          console.log("Session invalid, redirecting to signin");
+          navigate("/signin");
+          return;
         }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An unknown error occurred");
-      } finally {
-        setLoading(false);
+        
+        // Check teacher role
+        if (!roles.includes("TEACHER")) {
+          console.log("User is not a teacher, redirecting to home");
+          navigate("/");
+          return;
+        }
+        
+        console.log("Auth check successful for teacher page");
+        setAuthChecked(true);
+        fetchClasses();
+      } catch (error) {
+        console.error("Auth check error:", error);
+        setError("Authentication error. Please try logging in again.");
+        navigate("/signin");
       }
     };
+    
+    checkAuth();
+  }, [isInitialized, isLoggedIn, roles]);
 
-    fetchClasses();
-  }, [isLoggedIn, roles, navigate, getToken]);
+  const fetchClasses = async () => {
+    console.log("Fetching classes for teacher...");
+    try {
+      setLoading(true);
+      const token = getToken();
+      
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+
+      console.log("Making API request to fetch teacher classes...");
+      const response = await fetch("http://localhost:8080/education/api/classes/teacher", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.log("Unauthorized response from classes API");
+          navigate("/signin");
+          return;
+        }
+        throw new Error(`Error: ${response.status}`);
+      }
+
+      const data: ApiResponse = await response.json();
+      
+      if (data.code === 1000) {
+        console.log("Classes fetched successfully:", data.result.length);
+        setClasses(data.result);
+      } else {
+        throw new Error(data.message || "Failed to fetch classes");
+      }
+    } catch (err) {
+      console.error("Error fetching classes:", err);
+      setError(err instanceof Error ? err.message : "An unknown error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Format user data for the navbar
   const navbarUser = user ? {
@@ -78,6 +127,22 @@ export default function TeacherPage() {
     avatarUrl: user.avatarUrl,
     role: "TEACHER"
   } : undefined;
+
+  // Show loading state when initializing
+  if (!authChecked || (loading && classes.length === 0)) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar isLoggedIn={isLoggedIn} user={navbarUser} />
+        <main className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-gray-600">Loading teacher dashboard...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -89,11 +154,7 @@ export default function TeacherPage() {
           <p className="text-gray-600 mt-2">Manage all your teaching classes</p>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        ) : error ? (
+        {error ? (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
             <strong className="font-bold">Error! </strong>
             <span className="block sm:inline">{error}</span>

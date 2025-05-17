@@ -5,6 +5,7 @@ import FeatureSection from "../components/FeatureSection";
 import AboutSection from "../components/AboutSection";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { useEffect, useState } from "react";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -14,7 +15,29 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
-  const { isLoggedIn, user, logout, roles } = useAuth();
+  const { isLoggedIn, user, logout, roles, validateSession, isInitialized } = useAuth();
+  const [authChecking, setAuthChecking] = useState(true);
+
+  useEffect(() => {
+    // Validate the session silently without redirecting
+    const validateAuthState = async () => {
+      if (!isInitialized) {
+        console.log("Auth not initialized yet for home page");
+        return;
+      }
+      
+      console.log("Validating auth state silently on home page");
+      try {
+        await validateSession();
+      } catch (error) {
+        console.error("Error validating session on home:", error);
+      } finally {
+        setAuthChecking(false);
+      }
+    };
+    
+    validateAuthState();
+  }, [isInitialized, validateSession]);
 
   // Format user data for the navbar
   const navbarUser = user ? {
@@ -22,6 +45,16 @@ export default function Home() {
     avatarUrl: user.avatarUrl,
     role: roles.includes("TEACHER") ? "TEACHER" : roles.includes("STUDENT") ? "STUDENT" : "USER"
   } : undefined;
+  
+  // Simple loading state during initialization
+  if (authChecking && !isInitialized) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <p className="mt-4 text-gray-600">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

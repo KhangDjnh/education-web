@@ -45,15 +45,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 // App content with Auth Provider
 const AppContent = () => {
-  return <Outlet />;
+  return (
+    <AuthProvider>
+      <Outlet />
+    </AuthProvider>
+  );
 };
 
 export default function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
+  return <AppContent />;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
