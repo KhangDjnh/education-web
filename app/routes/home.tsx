@@ -6,6 +6,7 @@ import AboutSection from "../components/AboutSection";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -17,6 +18,14 @@ export function meta({}: Route.MetaArgs) {
 export default function Home() {
   const { isLoggedIn, user, logout, roles, validateSession, isInitialized } = useAuth();
   const [authChecking, setAuthChecking] = useState(true);
+  const navigate = useNavigate();
+
+  // Custom logout handler to ensure proper navigation
+  const handleLogout = () => {
+    console.log("Handling logout from Home page");
+    logout();
+    // The global logout handler in AuthContext will redirect to home
+  };
 
   useEffect(() => {
     // Validate the session silently without redirecting
@@ -103,7 +112,7 @@ export default function Home() {
                     )}
                     
                     <button
-                      onClick={logout}
+                      onClick={handleLogout}
                       className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
                     >
                       Log out

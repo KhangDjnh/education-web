@@ -34,8 +34,9 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn = false, user }) => {
 
   const handleSignOut = (e: React.MouseEvent) => {
     e.preventDefault();
+    console.log("Navbar: Logging out user");
     logout();
-    navigate("/");
+    // No need to navigate manually anymore as logout in AuthContext handles this
   };
 
   // Mock data for dropdowns

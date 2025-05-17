@@ -134,6 +134,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     console.log("Logging out, clearing auth state");
     clearAuthData();
+    
+    // Use window.location to force a complete refresh and navigate to home page
+    window.location.href = "/";
   };
 
   const getToken = (): string | null => {
