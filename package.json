@@ -12,6 +12,7 @@
     "@heroicons/react": "^2.2.0",
     "@react-router/node": "^7.5.3",
     "@react-router/serve": "^7.5.3",
+    "@stomp/stompjs": "^7.1.1",
     "isbot": "^5.1.27",
     "jspdf": "^3.0.1",
     "react": "^19.1.0",
@@ -19,7 +20,9 @@
     "react-router": "^7.6.0",
     "react-router-dom": "^7.6.0",
     "react-slick": "^0.30.3",
-    "slick-carousel": "^1.8.1"
+    "slick-carousel": "^1.8.1",
+    "sockjs-client": "^1.6.1",
+    "stompjs": "^2.3.3"
   },
   "devDependencies": {
     "@react-router/dev": "^7.5.3",
@@ -27,6 +30,7 @@
     "@types/node": "^20",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
+    "@types/sockjs-client": "^1.5.4",
     "tailwindcss": "^4.1.7",
     "typescript": "^5.8.3",
     "vite": "^6.3.3",

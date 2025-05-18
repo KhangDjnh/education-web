@@ -1,8 +1,17 @@
 import React, { useState } from "react";
 import Avatar from "./Avatar";
-import { MagnifyingGlassIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import {
+  MagnifyingGlassIcon,
+  ChevronDownIcon,
+  BellIcon,
+  EnvelopeOpenIcon,
+  EnvelopeIcon,
+  ExclamationTriangleIcon,
+  AcademicCapIcon,
+} from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
+import { useNotification } from "../contexts/NotificationContext";
 
 // Logo path
 const logoPath = "/images/logo/logo.png";
@@ -16,14 +25,34 @@ type NavbarProps = {
   };
 };
 
+const noticeTypeIcon = (type: string, opened: boolean) => {
+  switch (type) {
+    case "LEAVE_REQUEST":
+      return opened ? (
+        <EnvelopeOpenIcon className="h-6 w-6 text-blue-500" />
+      ) : (
+        <EnvelopeIcon className="h-6 w-6 text-blue-400" />
+      );
+    case "WARNING":
+      return <ExclamationTriangleIcon className="h-6 w-6 text-yellow-500" />;
+    case "EXAM":
+      return <AcademicCapIcon className="h-6 w-6 text-purple-500" />;
+    default:
+      return <BellIcon className="h-6 w-6 text-gray-400" />;
+  }
+};
+
 export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn = false, user }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const { logout } = useAuth();
   const navigate = useNavigate();
-  
+  const { notices, unreadCount, markAsRead } = useNotification();
+
   // State for dropdowns
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [openedNoticeId, setOpenedNoticeId] = useState<null | number>(null);
+
   const toggleDropdown = (name: string) => {
     if (activeDropdown === name) {
       setActiveDropdown(null);
@@ -34,16 +63,25 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn = false, user }) => {
 
   const handleSignOut = (e: React.MouseEvent) => {
     e.preventDefault();
-    console.log("Navbar: Logging out user");
     logout();
-    // No need to navigate manually anymore as logout in AuthContext handles this
   };
 
   // Mock data for dropdowns
   const dropdownItems = {
-    courses: ["Web Development", "Mobile Development", "Data Science", "AI & Machine Learning", "Cybersecurity"],
-    sources: ["Official Documentation", "Community Resources", "Video Tutorials", "Interactive Courses"],
-    platforms: ["Web", "Mobile", "Desktop", "Embedded Systems"]
+    courses: [
+      "Web Development",
+      "Mobile Development",
+      "Data Science",
+      "AI & Machine Learning",
+      "Cybersecurity",
+    ],
+    sources: [
+      "Official Documentation",
+      "Community Resources",
+      "Video Tutorials",
+      "Interactive Courses",
+    ],
+    platforms: ["Web", "Mobile", "Desktop", "Embedded Systems"],
   };
 
   // User profile dropdown items based on role
@@ -51,22 +89,14 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn = false, user }) => {
     const baseItems = [
       { label: "Profile", href: "/profile", action: null },
       { label: "Settings", href: "/settings", action: null },
-      { label: "Sign Out", href: "#", action: handleSignOut }
+      { label: "Sign Out", href: "#", action: handleSignOut },
     ];
 
-    // Add role-specific items
     if (user?.role === "TEACHER") {
-      return [
-        { label: "Teacher Dashboard", href: "/teacher", action: null },
-        ...baseItems
-      ];
+      return [{ label: "Teacher Dashboard", href: "/teacher", action: null }, ...baseItems];
     } else if (user?.role === "STUDENT") {
-      return [
-        { label: "Student Dashboard", href: "/student", action: null },
-        ...baseItems
-      ];
+      return [{ label: "Student Dashboard", href: "/student", action: null }, ...baseItems];
     }
-
     return baseItems;
   };
 
@@ -79,11 +109,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn = false, user }) => {
           {/* Logo and brand name */}
           <div className="flex items-center">
             <a href="/" className="flex items-center">
-              <img 
-                src={logoPath} 
-                alt="Education Logo" 
-                className="h-8 w-auto" 
-              />
+              <img src={logoPath} alt="Education Logo" className="h-8 w-auto" />
               <span className="ml-2 text-xl font-bold text-gray-900">Education</span>
             </a>
           </div>
@@ -110,101 +136,113 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn = false, user }) => {
           {/* Navigation items and auth buttons */}
           <div className="flex items-center space-x-4">
             {/* Dropdown for Courses */}
-            <div className="relative">
-              <button 
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium 
-                          flex items-center"
-                onClick={() => toggleDropdown("courses")}
-              >
-                Courses
-                <ChevronDownIcon className="ml-1 h-4 w-4" />
-              </button>
-              {activeDropdown === "courses" && (
-                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                  <div className="py-1" role="menu" aria-orientation="vertical">
-                    {dropdownItems.courses.map((item) => (
-                      <a
-                        key={item}
-                        href={`/courses/${item.toLowerCase().replace(/\s+/g, '-')}`}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        role="menuitem"
-                      >
-                        {item}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* ...existing dropdowns... */}
 
-            {/* Dropdown for Sources */}
-            <div className="relative">
-              <button 
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium 
-                          flex items-center"
-                onClick={() => toggleDropdown("sources")}
-              >
-                Sources
-                <ChevronDownIcon className="ml-1 h-4 w-4" />
-              </button>
-              {activeDropdown === "sources" && (
-                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                  <div className="py-1" role="menu" aria-orientation="vertical">
-                    {dropdownItems.sources.map((item) => (
-                      <a
-                        key={item}
-                        href={`/sources/${item.toLowerCase().replace(/\s+/g, '-')}`}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        role="menuitem"
-                      >
-                        {item}
-                      </a>
-                    ))}
+            {/* Notification bell */}
+            {isLoggedIn && (
+              <div className="relative mr-4">
+                <button
+                  className="relative"
+                  onClick={() => setShowDropdown((v) => !v)}
+                  aria-label="Thông báo"
+                >
+                  <BellIcon className="h-7 w-7 text-blue-600" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+                {showDropdown && (
+                  <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)}>
+                    {/* Overlay for closing */}
                   </div>
-                </div>
-              )}
-            </div>
-
-            {/* Dropdown for Platforms */}
-            <div className="relative">
-              <button 
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium 
-                          flex items-center"
-                onClick={() => toggleDropdown("platforms")}
-              >
-                Platforms
-                <ChevronDownIcon className="ml-1 h-4 w-4" />
-              </button>
-              {activeDropdown === "platforms" && (
-                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                  <div className="py-1" role="menu" aria-orientation="vertical">
-                    {dropdownItems.platforms.map((item) => (
-                      <a
-                        key={item}
-                        href={`/platforms/${item.toLowerCase().replace(/\s+/g, '-')}`}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        role="menuitem"
-                      >
-                        {item}
-                      </a>
-                    ))}
+                )}
+                {showDropdown && (
+                  <div className="fixed top-20 right-8 z-50 w-[420px] max-w-full">
+                    <div className="bg-white rounded-2xl shadow-2xl border border-blue-100">
+                      <div className="flex items-center justify-between px-6 py-4 border-b">
+                        <span className="font-bold text-lg text-blue-700 flex items-center">
+                          <BellIcon className="h-6 w-6 mr-2" />
+                          Thông báo
+                        </span>
+                        <button
+                          className="text-gray-400 hover:text-gray-600"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <ul className="max-h-[60vh] overflow-y-auto divide-y divide-gray-100">
+                        {notices.length === 0 && (
+                          <li className="p-6 text-gray-400 text-center">
+                            <BellIcon className="mx-auto h-8 w-8 mb-2" />
+                            Không có thông báo nào
+                          </li>
+                        )}
+                        {notices.map((notice) => {
+                          const opened = openedNoticeId === notice.id;
+                          return (
+                            <li
+                              key={notice.id}
+                              className={`flex items-start gap-3 px-6 py-5 cursor-pointer transition group ${
+                                opened
+                                  ? "bg-blue-50 border-l-4 border-blue-500"
+                                  : !notice.read
+                                  ? "bg-blue-100/40"
+                                  : "bg-white"
+                              }`}
+                              onClick={() => {
+                                setOpenedNoticeId(opened ? null : notice.id);
+                                if (!notice.read) markAsRead(notice.id);
+                              }}
+                            >
+                              <div className="mt-1">{noticeTypeIcon(notice.type, opened)}</div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-gray-800">
+                                    {notice.type === "LEAVE_REQUEST"
+                                      ? "Yêu cầu nghỉ học"
+                                      : notice.type === "WARNING"
+                                      ? "Cảnh báo"
+                                      : notice.type === "EXAM"
+                                      ? "Thông báo thi"
+                                      : "Thông báo"}
+                                  </span>
+                                  {!notice.read && (
+                                    <span className="ml-2 px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full">
+                                      Mới
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-500 mb-1">
+                                  {new Date(notice.createAt).toLocaleString("vi-VN")}
+                                </div>
+                                {/* Chỉ hiện nội dung khi mở */}
+                                {opened && (
+                                  <div className="mt-2 text-gray-700 text-sm leading-relaxed">
+                                    {notice.content}
+                                  </div>
+                                )}
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* User authentication */}
             {isLoggedIn && user ? (
               <div className="relative">
-                <div 
+                <div
                   className="flex items-center cursor-pointer"
                   onClick={() => toggleDropdown("user")}
                 >
-                  <Avatar 
-                    username={user.username} 
-                    imageUrl={user.avatarUrl}
-                    size="md"
-                  />
+                  <Avatar username={user.username} imageUrl={user.avatarUrl} size="md" />
                 </div>
                 {activeDropdown === "user" && (
                   <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
@@ -264,4 +302,4 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn = false, user }) => {
   );
 };
 
-export default Navbar; 
+export default Navbar;

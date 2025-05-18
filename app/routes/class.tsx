@@ -20,6 +20,7 @@ import {
   ArrowDownTrayIcon,
   ArrowTopRightOnSquareIcon,
   PlusIcon,
+  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import {
   CheckCircleIcon,
@@ -1507,6 +1508,30 @@ export default function ClassPage() {
     );
   };
 
+  const renderAssignmentsTab = () => (
+    <div className="text-center py-12">
+      <PencilSquareIcon className="mx-auto h-16 w-16 text-pink-400 mb-4" />
+      <h2 className="text-2xl font-bold mb-2 text-gray-800">Assignments</h2>
+      <p className="text-gray-500 mb-4">
+        Create, assign and review class assignments here.
+      </p>
+      <div className="text-gray-400">This feature is under development.</div>
+    </div>
+  );
+
+  const renderGradesTab = () => (
+    <div className="text-center py-12">
+      <ChartBarIcon className="mx-auto h-16 w-16 text-teal-400 mb-4" />
+      <h2 className="text-2xl font-bold mb-2 text-gray-800">
+        Grades Management
+      </h2>
+      <p className="text-gray-500 mb-4">
+        View and manage students' exam grades here.
+      </p>
+      <div className="text-gray-400">This feature is under development.</div>
+    </div>
+  );
+
   // Fetch questions with pagination
   const fetchQuestions = async (page = 0) => {
     setLoadingQuestions(true);
@@ -2175,6 +2200,13 @@ export default function ClassPage() {
       color: "bg-yellow-500",
     },
     {
+      id: "assignments",
+      name: "Assignments",
+      icon: <PencilSquareIcon className="w-6 h-6" />,
+      description: "Create, assign and review class assignments",
+      color: "bg-pink-500",
+    },
+    {
       id: "questions",
       name: "Question Bank",
       icon: <QuestionMarkCircleIcon className="w-6 h-6" />,
@@ -2187,6 +2219,13 @@ export default function ClassPage() {
       icon: <DocumentDuplicateIcon className="w-6 h-6" />,
       description: "Create and manage exams and assessments",
       color: "bg-indigo-500",
+    },
+    {
+      id: "grades",
+      name: "Grades Management",
+      icon: <ChartBarIcon className="w-6 h-6" />,
+      description: "View and manage students' exam grades",
+      color: "bg-teal-500",
     },
   ];
 
@@ -2317,21 +2356,24 @@ export default function ClassPage() {
                     Back to Overview
                   </button>
                 </div>
-
                 {/* Render content based on active tab */}
                 {activeTab === "students" && renderStudentsTab()}
                 {activeTab === "documents" && renderDocumentsTab()}
                 {activeTab === "attendance" && renderAttendanceTab()}
                 {activeTab === "absence" && renderAbsenceTab()}
+                {activeTab === "assignments" && renderAssignmentsTab()}
                 {activeTab === "questions" && renderQuestionsTab()}
                 {activeTab === "exams" && renderExamsTab()}
+                {activeTab === "grades" && renderGradesTab()}
                 {![
                   "students",
                   "documents",
                   "attendance",
                   "absence",
+                  "assignments",
                   "questions",
                   "exams",
+                  "grades",
                 ].includes(activeTab) && (
                   <div className="bg-gray-50 rounded-lg p-12 flex items-center justify-center">
                     <div className="text-center">
