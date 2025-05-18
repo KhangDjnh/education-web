@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  useParams,
-  useNavigate,
-} from "react-router";
+import { useParams, useNavigate } from "react-router";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useAuth } from "../contexts/AuthContext";
@@ -21,9 +18,16 @@ import {
   LinkIcon,
   ArrowDownTrayIcon,
   ArrowTopRightOnSquareIcon,
-  PlusIcon
+  PlusIcon,
 } from "@heroicons/react/24/outline";
-import { CheckCircleIcon, XCircleIcon, ClockIcon, UserCircleIcon, CalendarDaysIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/solid";
+import {
+  CheckCircleIcon,
+  XCircleIcon,
+  ClockIcon,
+  UserCircleIcon,
+  CalendarDaysIcon,
+  ChatBubbleLeftRightIcon,
+} from "@heroicons/react/24/solid";
 import AbsenceRequestCard from "../components/AbsenceRequestCard";
 import QuestionCard from "../components/QuestionCard";
 import type { Question } from "../components/QuestionCard";
@@ -103,41 +107,51 @@ export default function ClassPage() {
   const [loadingStudents, setLoadingStudents] = useState<boolean>(false);
   const [studentError, setStudentError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  
+
   // Document states
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loadingDocuments, setLoadingDocuments] = useState<boolean>(false);
   const [documentError, setDocumentError] = useState<string | null>(null);
   const [documentSearchTerm, setDocumentSearchTerm] = useState<string>("");
   const [showAddDocument, setShowAddDocument] = useState<boolean>(false);
-  const [newDocument, setNewDocument] = useState<{title: string, filePath: string}>({
+  const [newDocument, setNewDocument] = useState<{
+    title: string;
+    filePath: string;
+  }>({
     title: "",
-    filePath: ""
+    filePath: "",
   });
 
   // Attendance states
   const [attendanceList, setAttendanceList] = useState<AttendanceRecord[]>([]);
   const [attendanceSubmitting, setAttendanceSubmitting] = useState(false);
-  const [attendanceSuccess, setAttendanceSuccess] = useState<string | null>(null);
+  const [attendanceSuccess, setAttendanceSuccess] = useState<string | null>(
+    null
+  );
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
 
   // Absence Requests state
   const [absenceRequests, setAbsenceRequests] = useState<AbsenceRequest[]>([]);
   const [loadingAbsence, setLoadingAbsence] = useState(false);
   const [absenceError, setAbsenceError] = useState<string | null>(null);
-  const [selectedAbsence, setSelectedAbsence] = useState<AbsenceRequest | null>(null);
+  const [selectedAbsence, setSelectedAbsence] = useState<AbsenceRequest | null>(
+    null
+  );
   const [absenceActionLoading, setAbsenceActionLoading] = useState(false);
 
   // State for questions bank
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedQuestions, setSelectedQuestions] = useState<number[]>([]);
-  const [selectedQuestionDetail, setSelectedQuestionDetail] = useState<any>(null);
+  const [selectedQuestionDetail, setSelectedQuestionDetail] =
+    useState<any>(null);
   const [questionPage, setQuestionPage] = useState(0);
   const [questionTotalPages, setQuestionTotalPages] = useState(1);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
-  const [questionBankError, setQuestionBankError] = useState<string | null>(null);
+  const [questionBankError, setQuestionBankError] = useState<string | null>(
+    null
+  );
   const [showExamModal, setShowExamModal] = useState(false);
-
+  const [showRandomExamModal, setShowRandomExamModal] = useState(false);
   // State for questions bank search
   const [questionSearchKeyword, setQuestionSearchKeyword] = useState("");
   const [questionSearchChapter, setQuestionSearchChapter] = useState("");
@@ -149,29 +163,36 @@ export default function ClassPage() {
       try {
         setLoading(true);
         console.log("Class page mounted, checking auth for class ID:", id);
-        
+
         // Check if the session is valid
         const isSessionValid = await validateSession();
         console.log("Session valid:", isSessionValid);
-        
+
         if (!isSessionValid) {
-          console.log("Session invalid, storing redirect path and navigating to signin");
+          console.log(
+            "Session invalid, storing redirect path and navigating to signin"
+          );
           // Store current path for redirect after login
-          sessionStorage.setItem("redirectAfterLogin", window.location.pathname);
+          sessionStorage.setItem(
+            "redirectAfterLogin",
+            window.location.pathname
+          );
           navigate("/signin");
           return;
         }
-        
+
         // If we have a valid session, fetch the class data
         await fetchClassData();
       } catch (err) {
         console.error("Error in checkAuthAndLoadClass:", err);
-        setError(err instanceof Error ? err.message : "An unknown error occurred");
+        setError(
+          err instanceof Error ? err.message : "An unknown error occurred"
+        );
       } finally {
         setLoading(false);
       }
     };
-    
+
     checkAuthAndLoadClass();
   }, [id, validateSession, navigate]);
 
@@ -180,13 +201,13 @@ export default function ClassPage() {
     if (activeTab === "students" && classData) {
       fetchStudents();
     }
-    
+
     // Load documents data when the active tab is set to "documents"
     if (activeTab === "documents" && classData) {
       fetchDocuments();
     }
   }, [activeTab, classData]);
-  
+
   // Thêm useEffect để tự động load danh sách học sinh khi vào tab Attendance
   useEffect(() => {
     if (activeTab === "attendance" && classData) {
@@ -210,37 +231,43 @@ export default function ClassPage() {
     try {
       console.log("Fetching class data for ID:", id);
       const token = getToken();
-      
+
       if (!token) {
         throw new Error("Authentication token not found");
       }
-      
+
       console.log("Making API request to fetch class details");
-      const response = await fetch(`http://localhost:8080/education/api/classes/${id}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        credentials: "include"
-      });
-      
+      const response = await fetch(
+        `http://localhost:8080/education/api/classes/${id}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        }
+      );
+
       console.log("API response status:", response.status);
-      
+
       if (!response.ok) {
         if (response.status === 401) {
           console.log("401 Unauthorized response, token may be invalid");
           // Store the current URL to redirect back after login
-          sessionStorage.setItem("redirectAfterLogin", window.location.pathname);
+          sessionStorage.setItem(
+            "redirectAfterLogin",
+            window.location.pathname
+          );
           navigate("/signin");
           return;
         }
         throw new Error(`Error: ${response.status}`);
       }
-      
+
       const data: ApiResponse = await response.json();
       console.log("API response data:", data);
-      
+
       if (data.code === 1000) {
         setClassData(data.result);
       } else {
@@ -248,7 +275,9 @@ export default function ClassPage() {
       }
     } catch (err) {
       console.error("Error fetching class data:", err);
-      setError(err instanceof Error ? err.message : "An unknown error occurred");
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred"
+      );
     }
   };
 
@@ -257,26 +286,29 @@ export default function ClassPage() {
     try {
       setLoadingStudents(true);
       setStudentError(null);
-      
+
       const token = getToken();
       if (!token) {
         throw new Error("Authentication token not found");
       }
-      
-      const response = await fetch(`http://localhost:8080/education/api/class-students/students/${id}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
+
+      const response = await fetch(
+        `http://localhost:8080/education/api/class-students/students/${id}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
-      });
-      
+      );
+
       if (!response.ok) {
         throw new Error(`Failed to fetch students: ${response.status}`);
       }
-      
+
       const data: StudentApiResponse = await response.json();
-      
+
       if (data.code === 1000) {
         setStudents(data.result);
       } else {
@@ -284,37 +316,44 @@ export default function ClassPage() {
       }
     } catch (err) {
       console.error("Error fetching students:", err);
-      setStudentError(err instanceof Error ? err.message : "An error occurred while fetching students");
+      setStudentError(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while fetching students"
+      );
     } finally {
       setLoadingStudents(false);
     }
   };
-  
+
   // Fetch documents for the class
   const fetchDocuments = async () => {
     try {
       setLoadingDocuments(true);
       setDocumentError(null);
-      
+
       const token = getToken();
       if (!token) {
         throw new Error("Authentication token not found");
       }
-      
-      const response = await fetch(`http://localhost:8080/education/api/documents/class/${id}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
+
+      const response = await fetch(
+        `http://localhost:8080/education/api/documents/class/${id}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
-      });
-      
+      );
+
       if (!response.ok) {
         throw new Error(`Failed to fetch documents: ${response.status}`);
       }
-      
+
       const data: DocumentApiResponse = await response.json();
-      
+
       if (data.code === 1000) {
         setDocuments(data.result);
       } else {
@@ -322,12 +361,16 @@ export default function ClassPage() {
       }
     } catch (err) {
       console.error("Error fetching documents:", err);
-      setDocumentError(err instanceof Error ? err.message : "An error occurred while fetching documents");
+      setDocumentError(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while fetching documents"
+      );
     } finally {
       setLoadingDocuments(false);
     }
   };
-  
+
   const handleAddDocument = () => {
     // This would be connected to an actual API in production
     setShowAddDocument(false);
@@ -336,7 +379,7 @@ export default function ClassPage() {
       id: documents.length + 1,
       title: newDocument.title,
       filePath: newDocument.filePath,
-      uploadedAt: new Date().toISOString()
+      uploadedAt: new Date().toISOString(),
     };
     setDocuments([...documents, mockDocument]);
     // Reset the form
@@ -345,23 +388,23 @@ export default function ClassPage() {
 
   // Format the date
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
-  
+
   // Format time
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   // Filter students based on search term
-  const filteredStudents = students.filter(student => {
+  const filteredStudents = students.filter((student) => {
     const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
     const searchLower = searchTerm.toLowerCase();
     return (
@@ -370,36 +413,44 @@ export default function ClassPage() {
       student.username.toLowerCase().includes(searchLower)
     );
   });
-  
+
   // Filter documents based on search term
-  const filteredDocuments = documents.filter(document => {
-    return document.title.toLowerCase().includes(documentSearchTerm.toLowerCase());
+  const filteredDocuments = documents.filter((document) => {
+    return document.title
+      .toLowerCase()
+      .includes(documentSearchTerm.toLowerCase());
   });
 
   // Format date of birth
   const formatDOB = (dobString: string) => {
-    return new Date(dobString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return new Date(dobString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
-  
+
   // Get document type icon based on file path
   const getDocumentTypeIcon = (filePath: string) => {
-    if (filePath.includes('drive.google.com')) {
+    if (filePath.includes("drive.google.com")) {
       return <LinkIcon className="h-6 w-6 text-blue-500" />;
     }
     return <DocumentTextIcon className="h-6 w-6 text-blue-500" />;
   };
 
   // Format user data for the navbar
-  const navbarUser = user ? {
-    username: user.username,
-    avatarUrl: user.avatarUrl,
-    role: roles.includes("TEACHER") ? "TEACHER" : roles.includes("STUDENT") ? "STUDENT" : "USER"
-  } : undefined;
-  
+  const navbarUser = user
+    ? {
+        username: user.username,
+        avatarUrl: user.avatarUrl,
+        role: roles.includes("TEACHER")
+          ? "TEACHER"
+          : roles.includes("STUDENT")
+          ? "STUDENT"
+          : "USER",
+      }
+    : undefined;
+
   const handleTabClick = (tab: string) => {
     setActiveTab(tab);
   };
@@ -419,7 +470,10 @@ export default function ClassPage() {
 
     if (studentError) {
       return (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <div
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+          role="alert"
+        >
           <strong className="font-bold">Error! </strong>
           <span className="block sm:inline">{studentError}</span>
         </div>
@@ -429,7 +483,9 @@ export default function ClassPage() {
     return (
       <>
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-gray-800">Students in this class</h3>
+          <h3 className="text-xl font-bold text-gray-800">
+            Students in this class
+          </h3>
           <div className="flex space-x-2">
             <div className="relative">
               <input
@@ -450,8 +506,12 @@ export default function ClassPage() {
         {students.length === 0 ? (
           <div className="text-center py-8 bg-gray-50 rounded-lg">
             <UserGroupIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-lg font-medium text-gray-900">No students yet</h3>
-            <p className="mt-1 text-sm text-gray-500">Get started by adding students to this class.</p>
+            <h3 className="mt-2 text-lg font-medium text-gray-900">
+              No students yet
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Get started by adding students to this class.
+            </p>
             <div className="mt-6">
               <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
                 Add First Student
@@ -463,28 +523,46 @@ export default function ClassPage() {
             <table className="min-w-full divide-y divide-gray-200 bg-white rounded-lg shadow">
               <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     ID
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Student Name
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Username
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Email
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Date of Birth
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredStudents.map(student => (
+                {filteredStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {student.id}
@@ -493,7 +571,8 @@ export default function ClassPage() {
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
                           <span className="text-blue-800 font-medium text-sm">
-                            {student.firstName[0]}{student.lastName[0]}
+                            {student.firstName[0]}
+                            {student.lastName[0]}
                           </span>
                         </div>
                         <div className="ml-4">
@@ -531,7 +610,7 @@ export default function ClassPage() {
       </>
     );
   };
-  
+
   // Render the documents management tab
   const renderDocumentsTab = () => {
     if (loadingDocuments) {
@@ -547,7 +626,10 @@ export default function ClassPage() {
 
     if (documentError) {
       return (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <div
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+          role="alert"
+        >
           <strong className="font-bold">Error! </strong>
           <span className="block sm:inline">{documentError}</span>
         </div>
@@ -569,7 +651,7 @@ export default function ClassPage() {
               />
               <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
             </div>
-            <button 
+            <button
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center"
               onClick={() => setShowAddDocument(true)}
             >
@@ -578,30 +660,46 @@ export default function ClassPage() {
             </button>
           </div>
         </div>
-        
+
         {/* Add Document Form */}
         {showAddDocument && (
           <div className="bg-green-50 p-4 rounded-lg mb-6 border border-green-200">
-            <h4 className="font-medium text-green-800 mb-4">Add New Document</h4>
+            <h4 className="font-medium text-green-800 mb-4">
+              Add New Document
+            </h4>
             <div className="space-y-4">
               <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700">Document Title</label>
-                <input 
+                <label
+                  htmlFor="title"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Document Title
+                </label>
+                <input
                   type="text"
                   id="title"
                   value={newDocument.title}
-                  onChange={(e) => setNewDocument({...newDocument, title: e.target.value})}
+                  onChange={(e) =>
+                    setNewDocument({ ...newDocument, title: e.target.value })
+                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
                   placeholder="Enter document title"
                 />
               </div>
               <div>
-                <label htmlFor="filePath" className="block text-sm font-medium text-gray-700">File Link</label>
-                <input 
+                <label
+                  htmlFor="filePath"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  File Link
+                </label>
+                <input
                   type="text"
                   id="filePath"
                   value={newDocument.filePath}
-                  onChange={(e) => setNewDocument({...newDocument, filePath: e.target.value})}
+                  onChange={(e) =>
+                    setNewDocument({ ...newDocument, filePath: e.target.value })
+                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
                   placeholder="Enter file URL (e.g., Google Drive link)"
                 />
@@ -629,10 +727,14 @@ export default function ClassPage() {
         {documents.length === 0 ? (
           <div className="text-center py-8 bg-gray-50 rounded-lg">
             <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-lg font-medium text-gray-900">No documents yet</h3>
-            <p className="mt-1 text-sm text-gray-500">Get started by adding documents to this class.</p>
+            <h3 className="mt-2 text-lg font-medium text-gray-900">
+              No documents yet
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Get started by adding documents to this class.
+            </p>
             <div className="mt-6">
-              <button 
+              <button
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
                 onClick={() => setShowAddDocument(true)}
               >
@@ -642,37 +744,43 @@ export default function ClassPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredDocuments.map(document => (
-              <div key={document.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+            {filteredDocuments.map((document) => (
+              <div
+                key={document.id}
+                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+              >
                 <div className="p-4 flex items-start space-x-4">
                   <div className="bg-green-100 p-3 rounded-lg">
                     {getDocumentTypeIcon(document.filePath)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-900 truncate">{document.title}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 truncate">
+                      {document.title}
+                    </h3>
                     <p className="text-sm text-gray-500">
-                      Uploaded on {formatDate(document.uploadedAt)} at {formatTime(document.uploadedAt)}
+                      Uploaded on {formatDate(document.uploadedAt)} at{" "}
+                      {formatTime(document.uploadedAt)}
                     </p>
                   </div>
                 </div>
                 <div className="bg-gray-50 px-4 py-3 border-t border-gray-100 flex justify-between">
                   <div className="flex space-x-2">
-                    <button 
+                    <button
                       className="text-green-600 hover:text-green-800"
                       title="Edit document"
                     >
                       <PencilSquareIcon className="h-5 w-5" />
                     </button>
-                    <button 
+                    <button
                       className="text-red-600 hover:text-red-800"
                       title="Delete document"
                     >
                       <TrashIcon className="h-5 w-5" />
                     </button>
                   </div>
-                  <a 
-                    href={document.filePath} 
-                    target="_blank" 
+                  <a
+                    href={document.filePath}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
                   >
@@ -689,7 +797,10 @@ export default function ClassPage() {
   };
 
   // Update attendance status for a student
-  const handleAttendanceChange = (studentId: number, status: AttendanceStatus) => {
+  const handleAttendanceChange = (
+    studentId: number,
+    status: AttendanceStatus
+  ) => {
     setAttendanceList((prev) =>
       prev.map((record) =>
         record.studentId === studentId ? { ...record, status } : record
@@ -719,18 +830,21 @@ export default function ClassPage() {
               status: "PRESENT" as AttendanceStatus,
             }));
 
-      const response = await fetch("http://localhost:8080/education/api/attendance", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          classId: classData?.id,
-          attendanceDate,
-          attendances,
-        }),
-      });
+      const response = await fetch(
+        "http://localhost:8080/education/api/attendance",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            classId: classData?.id,
+            attendanceDate,
+            attendances,
+          }),
+        }
+      );
 
       const data = await response.json();
       if (data.code === 1000) {
@@ -740,7 +854,9 @@ export default function ClassPage() {
       }
     } catch (err) {
       setAttendanceError(
-        err instanceof Error ? err.message : "An error occurred while submitting attendance"
+        err instanceof Error
+          ? err.message
+          : "An error occurred while submitting attendance"
       );
     } finally {
       setAttendanceSubmitting(false);
@@ -763,7 +879,10 @@ export default function ClassPage() {
 
     if (studentError) {
       return (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <div
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+          role="alert"
+        >
           <strong className="font-bold">Error! </strong>
           <span className="block sm:inline">{studentError}</span>
         </div>
@@ -775,8 +894,12 @@ export default function ClassPage() {
       return (
         <div className="text-center py-8 bg-gray-50 rounded-lg">
           <UserGroupIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium text-gray-900">No students yet</h3>
-          <p className="mt-1 text-sm text-gray-500">Add students to start attendance.</p>
+          <h3 className="mt-2 text-lg font-medium text-gray-900">
+            No students yet
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Add students to start attendance.
+          </p>
         </div>
       );
     }
@@ -803,12 +926,18 @@ export default function ClassPage() {
           </button>
         </div>
         {attendanceSuccess && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4" role="alert">
+          <div
+            className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4"
+            role="alert"
+          >
             <span>{attendanceSuccess}</span>
           </div>
         )}
         {attendanceError && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
+          <div
+            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
+            role="alert"
+          >
             <span>{attendanceError}</span>
           </div>
         )}
@@ -816,29 +945,48 @@ export default function ClassPage() {
           <table className="min-w-full divide-y divide-gray-200 bg-white rounded-lg shadow">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Present</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Late</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Absent</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ID
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Student Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Username
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Email
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Present
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Late
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Absent
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {students.map((student) => {
-                const record = attendanceList.find((r) => r.studentId === student.id) || {
+                const record = attendanceList.find(
+                  (r) => r.studentId === student.id
+                ) || {
                   studentId: student.id,
                   status: "PRESENT" as AttendanceStatus,
                 };
                 return (
                   <tr key={student.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {student.id}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0 bg-purple-100 rounded-full flex items-center justify-center">
                           <span className="text-purple-800 font-medium text-sm">
-                            {student.firstName[0]}{student.lastName[0]}
+                            {student.firstName[0]}
+                            {student.lastName[0]}
                           </span>
                         </div>
                         <div className="ml-4">
@@ -848,14 +996,20 @@ export default function ClassPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.username}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {student.username}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {student.email}
+                    </td>
                     {/* Present Checkbox */}
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <input
                         type="checkbox"
                         checked={record.status === "PRESENT"}
-                        onChange={() => handleAttendanceChange(student.id, "PRESENT")}
+                        onChange={() =>
+                          handleAttendanceChange(student.id, "PRESENT")
+                        }
                       />
                     </td>
                     {/* Late Checkbox */}
@@ -863,7 +1017,9 @@ export default function ClassPage() {
                       <input
                         type="checkbox"
                         checked={record.status === "LATE"}
-                        onChange={() => handleAttendanceChange(student.id, "LATE")}
+                        onChange={() =>
+                          handleAttendanceChange(student.id, "LATE")
+                        }
                       />
                     </td>
                     {/* Absent Checkbox */}
@@ -871,7 +1027,9 @@ export default function ClassPage() {
                       <input
                         type="checkbox"
                         checked={record.status === "ABSENT"}
-                        onChange={() => handleAttendanceChange(student.id, "ABSENT")}
+                        onChange={() =>
+                          handleAttendanceChange(student.id, "ABSENT")
+                        }
                       />
                     </td>
                   </tr>
@@ -891,9 +1049,12 @@ export default function ClassPage() {
     try {
       const token = getToken();
       if (!token) throw new Error("Authentication token not found");
-      const response = await fetch(`http://localhost:8080/education/api/leave-request/class/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await fetch(
+        `http://localhost:8080/education/api/leave-request/class/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       if (!response.ok) throw new Error("Failed to fetch absence requests");
       const data = await response.json();
       if (data.code === 1000) {
@@ -902,7 +1063,11 @@ export default function ClassPage() {
         throw new Error(data.message || "Failed to fetch absence requests");
       }
     } catch (err) {
-      setAbsenceError(err instanceof Error ? err.message : "An error occurred while fetching absence requests");
+      setAbsenceError(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while fetching absence requests"
+      );
     } finally {
       setLoadingAbsence(false);
     }
@@ -915,14 +1080,17 @@ export default function ClassPage() {
     try {
       const token = getToken();
       if (!token) throw new Error("Authentication token not found");
-      const response = await fetch(`http://localhost:8080/education/api/leave-request/${selectedAbsence.id}/status`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ status: action })
-      });
+      const response = await fetch(
+        `http://localhost:8080/education/api/leave-request/${selectedAbsence.id}/status`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: action }),
+        }
+      );
       const data = await response.json();
       if (data.code === 1000) {
         // Update local state
@@ -965,7 +1133,10 @@ export default function ClassPage() {
     }
     if (absenceError) {
       return (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <div
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+          role="alert"
+        >
           <strong className="font-bold">Error! </strong>
           <span className="block sm:inline">{absenceError}</span>
         </div>
@@ -974,9 +1145,17 @@ export default function ClassPage() {
     if (absenceRequests.length === 0) {
       return (
         <div className="text-center py-8 bg-gray-50 rounded-lg">
-          <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="No requests" className="mx-auto h-16 w-16 opacity-60" />
-          <h3 className="mt-2 text-lg font-medium text-gray-900">No absence requests</h3>
-          <p className="mt-1 text-sm text-gray-500">No student has submitted a leave request yet.</p>
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+            alt="No requests"
+            className="mx-auto h-16 w-16 opacity-60"
+          />
+          <h3 className="mt-2 text-lg font-medium text-gray-900">
+            No absence requests
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            No student has submitted a leave request yet.
+          </p>
         </div>
       );
     }
@@ -1000,23 +1179,33 @@ export default function ClassPage() {
               <div className="flex items-center space-x-4 mb-4">
                 <UserCircleIcon className="h-14 w-14 text-blue-400" />
                 <div>
-                  <div className="text-lg font-semibold text-gray-800">{selectedAbsence.studentName}</div>
-                  <div className="text-sm text-gray-500">Student ID: {selectedAbsence.studentId}</div>
+                  <div className="text-lg font-semibold text-gray-800">
+                    {selectedAbsence.studentName}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Student ID: {selectedAbsence.studentId}
+                  </div>
                 </div>
               </div>
               <div className="mb-4">
                 <div className="flex items-center mb-2">
                   <CalendarDaysIcon className="h-5 w-5 text-blue-500 mr-2" />
                   <span className="font-medium text-gray-700">Leave Date:</span>
-                  <span className="ml-2 !text-black">{new Date(selectedAbsence.leaveDate).toLocaleDateString()}</span>
+                  <span className="ml-2 !text-black">
+                    {new Date(selectedAbsence.leaveDate).toLocaleDateString()}
+                  </span>
                 </div>
                 <div className="flex items-center mb-2">
                   <ChatBubbleLeftRightIcon className="h-5 w-5 text-blue-500 mr-2" />
                   <span className="font-medium text-gray-700">Reason:</span>
-                  <span className="ml-2 !text-black">{selectedAbsence.reason}</span>
+                  <span className="ml-2 !text-black">
+                    {selectedAbsence.reason}
+                  </span>
                 </div>
                 <div className="flex items-center">
-                  <span className="font-medium text-gray-700 mr-2">Status:</span>
+                  <span className="font-medium text-gray-700 mr-2">
+                    Status:
+                  </span>
                   {selectedAbsence.status === "APPROVED" && (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
                       <CheckCircleIcon className="h-4 w-4 mr-1" /> Approved
@@ -1059,7 +1248,11 @@ export default function ClassPage() {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
-              <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Select request" className="h-20 w-20 mb-4 opacity-60" />
+              <img
+                src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+                alt="Select request"
+                className="h-20 w-20 mb-4 opacity-60"
+              />
               <span className="text-lg">Select a request to view details</span>
             </div>
           )}
@@ -1112,8 +1305,8 @@ export default function ClassPage() {
 
   // Handle check/uncheck
   const handleCheckQuestion = (qid: number, checked: boolean) => {
-    setSelectedQuestions(prev =>
-      checked ? [...prev, qid] : prev.filter(id => id !== qid)
+    setSelectedQuestions((prev) =>
+      checked ? [...prev, qid] : prev.filter((id) => id !== qid)
     );
   };
 
@@ -1157,6 +1350,52 @@ export default function ClassPage() {
     }
   };
 
+  // Xử lý tạo random exam
+  const handleCreateRandomExam = async (examData: {
+    title: string;
+    description: string;
+    numberOfEasyQuestions: string;
+    numberOfMediumQuestions: string;
+    numberOfHardQuestions: string;
+    numberOfVeryHardQuestions: string;
+    startTime: string;
+    endTime: string;
+  }) => {
+    try {
+      const token = getToken();
+      const res = await fetch(
+        "http://localhost:8080/education/api/exams/random",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            classId: id,
+            title: examData.title,
+            description: examData.description,
+            numberOfEasyQuestions: examData.numberOfEasyQuestions,
+            numberOfMediumQuestions: examData.numberOfMediumQuestions,
+            numberOfHardQuestions: examData.numberOfHardQuestions,
+            numberOfVeryHardQuestions: examData.numberOfVeryHardQuestions,
+            startTime: examData.startTime,
+            endTime: examData.endTime,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (data.code === 1000) {
+        alert("Random Exam created successfully!");
+        setShowRandomExamModal(false);
+      } else {
+        alert(data.message || "Failed to create random exam");
+      }
+    } catch (err) {
+      alert("Error creating random exam");
+    }
+  };
+
   // Search handler
   const handleQuestionSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -1168,8 +1407,10 @@ export default function ClassPage() {
       const body: any = {
         classId: id,
       };
-      if (questionSearchKeyword.trim()) body.keyword = questionSearchKeyword.trim();
-      if (questionSearchChapter.trim()) body.chapter = Number(questionSearchChapter);
+      if (questionSearchKeyword.trim())
+        body.keyword = questionSearchKeyword.trim();
+      if (questionSearchChapter.trim())
+        body.chapter = Number(questionSearchChapter);
       if (questionSearchLevel) body.level = questionSearchLevel;
       const res = await fetch(
         "http://localhost:8080/education/api/questions/search",
@@ -1228,17 +1469,20 @@ export default function ClassPage() {
             <p className="text-gray-600">Loading questions...</p>
           </div>
         ) : questionBankError ? (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <div
+            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+            role="alert"
+          >
             <span>{questionBankError}</span>
           </div>
         ) : (
           <>
-            {questions.map(q => (
+            {questions.map((q) => (
               <QuestionCard
                 key={q.id}
                 question={q}
                 checked={selectedQuestions.includes(q.id)}
-                onCheck={checked => handleCheckQuestion(q.id, checked)}
+                onCheck={(checked) => handleCheckQuestion(q.id, checked)}
                 onClick={() => fetchQuestionDetail(q.id)}
                 selected={selectedQuestionDetail?.id === q.id}
               />
@@ -1268,7 +1512,7 @@ export default function ClassPage() {
           </>
         )}
         {/* Create Exam Button */}
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <button
             className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg text-sm font-medium"
             disabled={selectedQuestions.length === 0}
@@ -1276,9 +1520,15 @@ export default function ClassPage() {
           >
             Tạo Exam ({selectedQuestions.length} câu hỏi)
           </button>
+          <button
+            className="bg-pink-600 hover:bg-pink-700 text-white px-6 py-2 rounded-lg text-sm font-medium"
+            onClick={() => setShowRandomExamModal(true)}
+          >
+            Tạo Random Exam
+          </button>
           {isSearchingQuestions && (
             <button
-              className="ml-3 px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-black"
+              className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-black"
               onClick={handleResetQuestionSearch}
             >
               Reset Search
@@ -1294,35 +1544,41 @@ export default function ClassPage() {
           onSubmit={handleQuestionSearch}
         >
           <div className="flex-1">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Keyword</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Keyword
+            </label>
             <div className="relative text-black">
               <input
                 type="text"
                 className="w-full border rounded px-3 py-2 pr-10"
                 placeholder="Nhập từ khóa..."
                 value={questionSearchKeyword}
-                onChange={e => setQuestionSearchKeyword(e.target.value)}
+                onChange={(e) => setQuestionSearchKeyword(e.target.value)}
               />
               <MagnifyingGlassIcon className="absolute right-2 top-2 h-5 w-5 text-gray-400" />
             </div>
           </div>
           <div className="text-black">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Chapter</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Chapter
+            </label>
             <input
               type="number"
               min={1}
               className="w-20 border rounded px-2 py-2"
               placeholder="Chương"
               value={questionSearchChapter}
-              onChange={e => setQuestionSearchChapter(e.target.value)}
+              onChange={(e) => setQuestionSearchChapter(e.target.value)}
             />
           </div>
           <div className="text-black">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Level</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Level
+            </label>
             <select
               className="w-32 border rounded px-2 py-2"
               value={questionSearchLevel}
-              onChange={e => setQuestionSearchLevel(e.target.value)}
+              onChange={(e) => setQuestionSearchLevel(e.target.value)}
             >
               <option value="">All</option>
               <option value="EASY">Easy</option>
@@ -1347,25 +1603,34 @@ export default function ClassPage() {
               {selectedQuestionDetail.question}
             </div>
             <div className="mb-2">
-              <span className="font-medium">Chapter:</span> {selectedQuestionDetail.chapter}
+              <span className="font-medium">Chapter:</span>{" "}
+              {selectedQuestionDetail.chapter}
             </div>
             <div className="mb-2">
-              <span className="font-medium">Level:</span> {selectedQuestionDetail.level}
+              <span className="font-medium">Level:</span>{" "}
+              {selectedQuestionDetail.level}
             </div>
             <div className="mb-2">
-              <span className="font-medium">A:</span> {selectedQuestionDetail.optionA}
+              <span className="font-medium">A:</span>{" "}
+              {selectedQuestionDetail.optionA}
             </div>
             <div className="mb-2">
-              <span className="font-medium">B:</span> {selectedQuestionDetail.optionB}
+              <span className="font-medium">B:</span>{" "}
+              {selectedQuestionDetail.optionB}
             </div>
             <div className="mb-2">
-              <span className="font-medium">C:</span> {selectedQuestionDetail.optionC}
+              <span className="font-medium">C:</span>{" "}
+              {selectedQuestionDetail.optionC}
             </div>
             <div className="mb-2">
-              <span className="font-medium">D:</span> {selectedQuestionDetail.optionD}
+              <span className="font-medium">D:</span>{" "}
+              {selectedQuestionDetail.optionD}
             </div>
             <div className="mb-2">
-              <span className="font-medium">Answer:</span> <span className="text-green-700 font-bold">{selectedQuestionDetail.answer}</span>
+              <span className="font-medium">Answer:</span>{" "}
+              <span className="text-green-700 font-bold">
+                {selectedQuestionDetail.answer}
+              </span>
             </div>
           </div>
         ) : (
@@ -1391,7 +1656,7 @@ export default function ClassPage() {
           <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-lg">
             <h2 className="text-xl font-bold mb-4 text-black">Tạo Exam</h2>
             <form
-              onSubmit={e => {
+              onSubmit={(e) => {
                 e.preventDefault();
                 const form = e.target as typeof e.target & {
                   title: { value: string };
@@ -1408,20 +1673,44 @@ export default function ClassPage() {
               }}
             >
               <div className="mb-3 text-black">
-                <label className="block text-sm font-medium mb-1">Tiêu đề</label>
-                <input name="title" required className="w-full border rounded px-3 py-2" />
+                <label className="block text-sm font-medium mb-1">
+                  Tiêu đề
+                </label>
+                <input
+                  name="title"
+                  required
+                  className="w-full border rounded px-3 py-2"
+                />
               </div>
               <div className="mb-3 text-black">
                 <label className="block text-sm font-medium mb-1">Mô tả</label>
-                <input name="description" required className="w-full border rounded px-3 py-2" />
+                <input
+                  name="description"
+                  required
+                  className="w-full border rounded px-3 py-2"
+                />
               </div>
               <div className="mb-3 text-black">
-                <label className="block text-sm font-medium mb-1">Thời gian bắt đầu</label>
-                <input name="startTime" type="datetime-local" required className="w-full border rounded px-3 py-2"/>
+                <label className="block text-sm font-medium mb-1">
+                  Thời gian bắt đầu
+                </label>
+                <input
+                  name="startTime"
+                  type="datetime-local"
+                  required
+                  className="w-full border rounded px-3 py-2"
+                />
               </div>
               <div className="mb-3 text-black">
-                <label className="block text-sm font-medium mb-1">Thời gian kết thúc</label>
-                <input name="endTime" type="datetime-local" required className="w-full border rounded px-3 py-2" />
+                <label className="block text-sm font-medium mb-1">
+                  Thời gian kết thúc
+                </label>
+                <input
+                  name="endTime"
+                  type="datetime-local"
+                  required
+                  className="w-full border rounded px-3 py-2"
+                />
               </div>
               <div className="flex justify-end space-x-2 mt-4 text-black">
                 <button
@@ -1436,6 +1725,155 @@ export default function ClassPage() {
                   className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-700 text-white"
                 >
                   Tạo Exam
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {showRandomExamModal && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{
+            backgroundImage: "url('/images/exam.png')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+          }}
+        >
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-lg">
+            <h2 className="text-xl font-bold mb-4 text-black">
+              Tạo Random Exam
+            </h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const form = e.target as typeof e.target & {
+                  title: { value: string };
+                  description: { value: string };
+                  numberOfEasyQuestions: { value: string };
+                  numberOfMediumQuestions: { value: string };
+                  numberOfHardQuestions: { value: string };
+                  numberOfVeryHardQuestions: { value: string };
+                  startTime: { value: string };
+                  endTime: { value: string };
+                };
+                handleCreateRandomExam({
+                  title: form.title.value,
+                  description: form.description.value,
+                  numberOfEasyQuestions: form.numberOfEasyQuestions.value,
+                  numberOfMediumQuestions: form.numberOfMediumQuestions.value,
+                  numberOfHardQuestions: form.numberOfHardQuestions.value,
+                  numberOfVeryHardQuestions:
+                    form.numberOfVeryHardQuestions.value,
+                  startTime: form.startTime.value,
+                  endTime: form.endTime.value,
+                });
+              }}
+            >
+              <div className="mb-3 text-black">
+                <label className="block text-sm font-medium mb-1">
+                  Tiêu đề
+                </label>
+                <input
+                  name="title"
+                  required
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
+              <div className="mb-3 text-black">
+                <label className="block text-sm font-medium mb-1">Mô tả</label>
+                <input
+                  name="description"
+                  required
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
+              <div className="mb-3 text-black grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium mb-1">
+                    Số câu Easy
+                  </label>
+                  <input
+                    name="numberOfEasyQuestions"
+                    type="number"
+                    min={0}
+                    required
+                    className="w-full border rounded px-2 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">
+                    Số câu Medium
+                  </label>
+                  <input
+                    name="numberOfMediumQuestions"
+                    type="number"
+                    min={0}
+                    required
+                    className="w-full border rounded px-2 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">
+                    Số câu Hard
+                  </label>
+                  <input
+                    name="numberOfHardQuestions"
+                    type="number"
+                    min={0}
+                    required
+                    className="w-full border rounded px-2 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">
+                    Số câu Very Hard
+                  </label>
+                  <input
+                    name="numberOfVeryHardQuestions"
+                    type="number"
+                    min={0}
+                    required
+                    className="w-full border rounded px-2 py-2"
+                  />
+                </div>
+              </div>
+              <div className="mb-3 text-black">
+                <label className="block text-sm font-medium mb-1">
+                  Thời gian bắt đầu
+                </label>
+                <input
+                  name="startTime"
+                  type="datetime-local"
+                  required
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
+              <div className="mb-3 text-black">
+                <label className="block text-sm font-medium mb-1">
+                  Thời gian kết thúc
+                </label>
+                <input
+                  name="endTime"
+                  type="datetime-local"
+                  required
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
+              <div className="flex justify-end space-x-2 mt-4 text-black">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
+                  onClick={() => setShowRandomExamModal(false)}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded bg-pink-600 hover:bg-pink-700 text-white"
+                >
+                  Tạo Random Exam
                 </button>
               </div>
             </form>
@@ -1467,60 +1905,63 @@ export default function ClassPage() {
       name: "Manage Students",
       icon: <UserGroupIcon className="w-6 h-6" />,
       description: "View and manage students enrolled in this class",
-      color: "bg-blue-500"
+      color: "bg-blue-500",
     },
     {
       id: "documents",
       name: "Manage Documents",
       icon: <DocumentTextIcon className="w-6 h-6" />,
       description: "Upload and organize class materials and resources",
-      color: "bg-green-500"
+      color: "bg-green-500",
     },
     {
       id: "attendance",
       name: "Attendance",
       icon: <ClipboardDocumentCheckIcon className="w-6 h-6" />,
       description: "Track and manage student attendance",
-      color: "bg-purple-500"
+      color: "bg-purple-500",
     },
     {
       id: "absence",
       name: "Absence Requests",
       icon: <ExclamationTriangleIcon className="w-6 h-6" />,
       description: "Review and approve student absence requests",
-      color: "bg-yellow-500"
+      color: "bg-yellow-500",
     },
     {
       id: "questions",
       name: "Question Bank",
       icon: <QuestionMarkCircleIcon className="w-6 h-6" />,
       description: "Create and manage questions for exams and quizzes",
-      color: "bg-red-500"
+      color: "bg-red-500",
     },
     {
       id: "exams",
       name: "Exam Management",
       icon: <DocumentDuplicateIcon className="w-6 h-6" />,
       description: "Create and manage exams and assessments",
-      color: "bg-indigo-500"
-    }
+      color: "bg-indigo-500",
+    },
   ];
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar isLoggedIn={isLoggedIn} user={navbarUser} />
-      
+
       <main className="flex-grow container mx-auto px-4 py-8">
         {error ? (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <div
+            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+            role="alert"
+          >
             <strong className="font-bold">Error! </strong>
             <span className="block sm:inline">{error}</span>
           </div>
         ) : classData ? (
           <>
             {/* Back button */}
-            <button 
-              onClick={() => navigate(-1)} 
+            <button
+              onClick={() => navigate(-1)}
               className="flex items-center text-blue-600 hover:text-blue-800 mb-4"
             >
               <ChevronLeftIcon className="w-5 h-5 mr-1" />
@@ -1547,13 +1988,15 @@ export default function ClassPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="p-6">
                 <div className="mb-6">
-                  <h2 className="text-lg font-semibold text-gray-800 mb-2">Description</h2>
+                  <h2 className="text-lg font-semibold text-gray-800 mb-2">
+                    Description
+                  </h2>
                   <p className="text-gray-600">{classData.description}</p>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                   <div className="bg-gray-50 rounded-lg p-4">
                     <span className="text-gray-500">Class ID</span>
@@ -1561,11 +2004,15 @@ export default function ClassPage() {
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <span className="text-gray-500">Created On</span>
-                    <p className="font-medium text-gray-800">{formatDate(classData.createdAt)}</p>
+                    <p className="font-medium text-gray-800">
+                      {formatDate(classData.createdAt)}
+                    </p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <span className="text-gray-500">Teacher ID</span>
-                    <p className="font-medium text-gray-800">{classData.teacherId}</p>
+                    <p className="font-medium text-gray-800">
+                      {classData.teacherId}
+                    </p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <span className="text-gray-500">Status</span>
@@ -1578,19 +2025,25 @@ export default function ClassPage() {
             {/* Show features grid only if active tab is overview */}
             {activeTab === "overview" && (
               <>
-                <h2 className="text-xl font-bold text-gray-800 mb-4">Class Management</h2>
+                <h2 className="text-xl font-bold text-gray-800 mb-4">
+                  Class Management
+                </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {teacherFeatures.map((feature) => (
-                    <div 
+                    <div
                       key={feature.id}
                       onClick={() => handleTabClick(feature.id)}
                       className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transform hover:scale-[1.02] transition-all hover:shadow-lg"
                     >
-                      <div className={`${feature.color} p-4 flex items-center text-white`}>
+                      <div
+                        className={`${feature.color} p-4 flex items-center text-white`}
+                      >
                         <div className="bg-white/20 rounded-full p-2">
                           {feature.icon}
                         </div>
-                        <h3 className="ml-3 text-lg font-semibold">{feature.name}</h3>
+                        <h3 className="ml-3 text-lg font-semibold">
+                          {feature.name}
+                        </h3>
                       </div>
                       <div className="p-4">
                         <p className="text-gray-600">{feature.description}</p>
@@ -1609,30 +2062,37 @@ export default function ClassPage() {
               <div className="bg-white rounded-lg shadow-md p-6 mt-6">
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xl font-bold text-gray-800">
-                    {teacherFeatures.find(f => f.id === activeTab)?.name}
+                    {teacherFeatures.find((f) => f.id === activeTab)?.name}
                   </h3>
-                  <button 
-                    onClick={() => setActiveTab("overview")} 
+                  <button
+                    onClick={() => setActiveTab("overview")}
                     className="text-sm text-gray-500 hover:text-gray-700"
                   >
                     Back to Overview
                   </button>
                 </div>
-                
+
                 {/* Render content based on active tab */}
                 {activeTab === "students" && renderStudentsTab()}
                 {activeTab === "documents" && renderDocumentsTab()}
                 {activeTab === "attendance" && renderAttendanceTab()}
                 {activeTab === "absence" && renderAbsenceTab()}
                 {activeTab === "questions" && renderQuestionsTab()}
-                {!["students", "documents", "attendance", "absence", "questions"].includes(activeTab) && (
+                {![
+                  "students",
+                  "documents",
+                  "attendance",
+                  "absence",
+                  "questions",
+                ].includes(activeTab) && (
                   <div className="bg-gray-50 rounded-lg p-12 flex items-center justify-center">
                     <div className="text-center">
                       <div className="text-4xl text-gray-300 flex justify-center">
-                        {teacherFeatures.find(f => f.id === activeTab)?.icon}
+                        {teacherFeatures.find((f) => f.id === activeTab)?.icon}
                       </div>
                       <p className="mt-4 text-gray-600">
-                        This feature is currently under development. Check back soon!
+                        This feature is currently under development. Check back
+                        soon!
                       </p>
                     </div>
                   </div>
@@ -1641,13 +2101,18 @@ export default function ClassPage() {
             )}
           </>
         ) : (
-          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative" role="alert">
+          <div
+            className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative"
+            role="alert"
+          >
             <strong className="font-bold">No class found! </strong>
-            <span className="block sm:inline">Could not find the requested class.</span>
+            <span className="block sm:inline">
+              Could not find the requested class.
+            </span>
           </div>
         )}
       </main>
-      
+
       <Footer />
     </div>
   );
