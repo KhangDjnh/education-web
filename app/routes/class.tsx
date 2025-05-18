@@ -167,13 +167,13 @@ export default function ClassPage() {
   const [examError, setExamError] = useState<string | null>(null);
 
   // State cho exam detail
-const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
-const [examQuestions, setExamQuestions] = useState<any[]>([]);
-const [examQuestionsPage, setExamQuestionsPage] = useState(0);
-const [examQuestionsTotalPages, setExamQuestionsTotalPages] = useState(1);
-const [loadingExamQuestions, setLoadingExamQuestions] = useState(false);
-const [showExamPdf, setShowExamPdf] = useState(false);
-const [examPdfUrl, setExamPdfUrl] = useState<string | null>(null);
+  const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
+  const [examQuestions, setExamQuestions] = useState<any[]>([]);
+  const [examQuestionsPage, setExamQuestionsPage] = useState(0);
+  const [examQuestionsTotalPages, setExamQuestionsTotalPages] = useState(1);
+  const [loadingExamQuestions, setLoadingExamQuestions] = useState(false);
+  const [showExamPdf, setShowExamPdf] = useState(false);
+  const [examPdfUrl, setExamPdfUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuthAndLoadClass = async () => {
@@ -1083,49 +1083,49 @@ const [examPdfUrl, setExamPdfUrl] = useState<string | null>(null);
   };
 
   // Fetch questions for selected exam (with pagination)
-const fetchExamQuestions = async (examId: number, page = 0) => {
-  setLoadingExamQuestions(true);
-  try {
-    const token = getToken();
-    const res = await fetch(
-      `http://localhost:8080/education/api/exams/${examId}/questions?page=${page}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    const data = await res.json();
-    if (data.code === 1000) {
-      setExamQuestions(data.result.content);
-      setExamQuestionsPage(data.result.number);
-      setExamQuestionsTotalPages(data.result.totalPages);
-    } else {
-      setExamQuestions([]);
-      setExamQuestionsPage(0);
-      setExamQuestionsTotalPages(1);
-    }
-  } finally {
-    setLoadingExamQuestions(false);
-  }
-};
-
-// Export exam questions to PDF (backend)
-const handleExportExamPdf = async () => {
-  if (!selectedExam) return;
-  try {
-    const token = getToken();
-    const res = await fetch(
-      `http://localhost:8080/education/api/exam-pdf/exams/${selectedExam.id}/pdf`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
+  const fetchExamQuestions = async (examId: number, page = 0) => {
+    setLoadingExamQuestions(true);
+    try {
+      const token = getToken();
+      const res = await fetch(
+        `http://localhost:8080/education/api/exams/${examId}/questions?page=${page}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (data.code === 1000) {
+        setExamQuestions(data.result.content);
+        setExamQuestionsPage(data.result.number);
+        setExamQuestionsTotalPages(data.result.totalPages);
+      } else {
+        setExamQuestions([]);
+        setExamQuestionsPage(0);
+        setExamQuestionsTotalPages(1);
       }
-    );
-    if (!res.ok) throw new Error("Failed to fetch PDF");
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    setExamPdfUrl(url);
-    setShowExamPdf(true);
-  } catch (err) {
-    alert("Không thể tải file PDF");
-  }
-};
+    } finally {
+      setLoadingExamQuestions(false);
+    }
+  };
+
+  // Export exam questions to PDF (backend)
+  const handleExportExamPdf = async () => {
+    if (!selectedExam) return;
+    try {
+      const token = getToken();
+      const res = await fetch(
+        `http://localhost:8080/education/api/exam-pdf/exams/${selectedExam.id}/pdf`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!res.ok) throw new Error("Failed to fetch PDF");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      setExamPdfUrl(url);
+      setShowExamPdf(true);
+    } catch (err) {
+      alert("Không thể tải file PDF");
+    }
+  };
 
   // Load exams when tab active
   useEffect(() => {
@@ -1136,135 +1136,158 @@ const handleExportExamPdf = async () => {
   }, [activeTab, classData]);
 
   const handleCloseExamPdf = () => {
-  setShowExamPdf(false);
-  if (examPdfUrl) {
-    URL.revokeObjectURL(examPdfUrl);
-    setExamPdfUrl(null);
-  }
-};
+    setShowExamPdf(false);
+    if (examPdfUrl) {
+      URL.revokeObjectURL(examPdfUrl);
+      setExamPdfUrl(null);
+    }
+  };
 
   // Render Exam Management tab
-const renderExamsTab = () => (
-  <div>
-    <h2 className="text-xl font-bold text-gray-800 mb-6">Exam List</h2>
-    {selectedExam ? (
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-blue-100 mb-6">
-        <button
-          className="mb-4 text-blue-600 hover:text-blue-800 flex items-center"
-          onClick={() => {
-            setSelectedExam(null);
-            setExamQuestions([]);
-          }}
-        >
-          <ChevronLeftIcon className="w-5 h-5 mr-1" />
-          Back to Exam List
-        </button>
-        <div className="mb-4">
-          <div className="text-2xl font-bold text-gray-800">{selectedExam.title}</div>
-          <div className="text-gray-600 mb-1">{selectedExam.description}</div>
-          <div className="text-sm text-gray-500 mb-1">
-            Thời gian: {new Date(selectedExam.startTime).toLocaleString()} - {new Date(selectedExam.endTime).toLocaleString()}
-          </div>
-          <div className="text-xs text-gray-400">
-            Created: {new Date(selectedExam.createdAt).toLocaleString()}
-          </div>
-        </div>
-        <div>
-          <h4 className="text-lg font-semibold mb-2">Danh sách câu hỏi</h4>
-          {loadingExamQuestions ? (
-            <div className="flex justify-center items-center h-32">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mb-2"></div>
-              <p className="text-gray-600 ml-2">Loading questions...</p>
+  const renderExamsTab = () => (
+    <div>
+      <h2 className="text-xl font-bold text-gray-800 mb-6">Exam List</h2>
+      {selectedExam ? (
+        <div className="bg-white rounded-xl shadow-lg p-6 border border-blue-100 mb-6">
+          <button
+            className="mb-4 text-blue-600 hover:text-blue-800 flex items-center"
+            onClick={() => {
+              setSelectedExam(null);
+              setExamQuestions([]);
+            }}
+          >
+            <ChevronLeftIcon className="w-5 h-5 mr-1" />
+            Back to Exam List
+          </button>
+          <div className="mb-4">
+            <div className="text-2xl font-bold text-gray-800">
+              {selectedExam.title}
             </div>
-          ) : (
-            <>
-              <ol className="space-y-4 mb-4">
-                {examQuestions.map((q, idx) => (
-                  <li key={q.questionId} className="bg-gray-50 rounded p-4 shadow-sm">
-                    <div className="font-medium text-gray-800 mb-1">
-                      {examQuestionsPage * 10 + idx + 1}. {q.question}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-gray-700 text-sm">
-                      <div><span className="font-semibold">A.</span> {q.optionA}</div>
-                      <div><span className="font-semibold">B.</span> {q.optionB}</div>
-                      <div><span className="font-semibold">C.</span> {q.optionC}</div>
-                      <div><span className="font-semibold">D.</span> {q.optionD}</div>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-              {/* Pagination */}
-              <div className="flex justify-center items-center gap-2 mb-4">
-                <button
-                  className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
-                  disabled={examQuestionsPage === 0}
-                  onClick={() => fetchExamQuestions(selectedExam.id, examQuestionsPage - 1)}
-                >
-                  Prev
-                </button>
-                <span className="px-2 py-1 text-gray-700">
-                  Page {examQuestionsPage + 1} / {examQuestionsTotalPages}
-                </span>
-                <button
-                  className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
-                  disabled={examQuestionsPage + 1 >= examQuestionsTotalPages}
-                  onClick={() => fetchExamQuestions(selectedExam.id, examQuestionsPage + 1)}
-                >
-                  Next
-                </button>
+            <div className="text-gray-600 mb-1">{selectedExam.description}</div>
+            <div className="text-sm text-gray-500 mb-1">
+              Thời gian: {new Date(selectedExam.startTime).toLocaleString()} -{" "}
+              {new Date(selectedExam.endTime).toLocaleString()}
+            </div>
+            <div className="text-xs text-gray-400">
+              Created: {new Date(selectedExam.createdAt).toLocaleString()}
+            </div>
+          </div>
+          <div>
+            <h4 className="text-lg font-semibold mb-2">Danh sách câu hỏi</h4>
+            {loadingExamQuestions ? (
+              <div className="flex justify-center items-center h-32">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mb-2"></div>
+                <p className="text-gray-600 ml-2">Loading questions...</p>
               </div>
-              {/* Action buttons */}
-              <div className="flex gap-4 mt-4">
+            ) : (
+              <>
+                <ol className="space-y-4 mb-4">
+                  {examQuestions.map((q, idx) => (
+                    <li
+                      key={q.questionId}
+                      className="bg-gray-50 rounded p-4 shadow-sm"
+                    >
+                      <div className="font-medium text-gray-800 mb-1">
+                        {examQuestionsPage * 10 + idx + 1}. {q.question}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-gray-700 text-sm">
+                        <div>
+                          <span className="font-semibold">A.</span> {q.optionA}
+                        </div>
+                        <div>
+                          <span className="font-semibold">B.</span> {q.optionB}
+                        </div>
+                        <div>
+                          <span className="font-semibold">C.</span> {q.optionC}
+                        </div>
+                        <div>
+                          <span className="font-semibold">D.</span> {q.optionD}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                {/* Pagination */}
+                <div className="flex justify-center items-center gap-2 mb-4">
+                  <button
+                    className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
+                    disabled={examQuestionsPage === 0}
+                    onClick={() =>
+                      fetchExamQuestions(selectedExam.id, examQuestionsPage - 1)
+                    }
+                  >
+                    Prev
+                  </button>
+                  <span className="px-2 py-1 text-gray-700">
+                    Page {examQuestionsPage + 1} / {examQuestionsTotalPages}
+                  </span>
+                  <button
+                    className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
+                    disabled={examQuestionsPage + 1 >= examQuestionsTotalPages}
+                    onClick={() =>
+                      fetchExamQuestions(selectedExam.id, examQuestionsPage + 1)
+                    }
+                  >
+                    Next
+                  </button>
+                </div>
+                {/* Action buttons */}
+                <div className="flex gap-4 mt-4">
+                  <button
+                    className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded font-medium"
+                    onClick={handleExportExamPdf}
+                  >
+                    Export PDF
+                  </button>
+                  <button
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded font-medium"
+                    onClick={() =>
+                      alert("Start Exam feature is under development!")
+                    }
+                  >
+                    Start Exam
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+          {/* PDF Viewer Modal */}
+          {showExamPdf && examPdfUrl && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg shadow-lg p-4 max-w-3xl w-full relative">
                 <button
-                  className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded font-medium"
-                  onClick={handleExportExamPdf}
+                  className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                  onClick={handleCloseExamPdf}
                 >
-                  Export PDF
+                  <XCircleIcon className="h-7 w-7" />
                 </button>
-                <button
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded font-medium"
-                  onClick={() => alert("Start Exam feature is under development!")}
-                >
-                  Start Exam
-                </button>
+                <iframe
+                  src={examPdfUrl}
+                  title="Exam PDF"
+                  className="w-full h-[70vh] rounded"
+                />
               </div>
-            </>
+            </div>
           )}
         </div>
-        {/* PDF Viewer Modal */}
-        {showExamPdf && examPdfUrl && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-lg p-4 max-w-3xl w-full relative">
-              <button
-                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-                onClick={handleCloseExamPdf}
-              >
-                <XCircleIcon className="h-7 w-7" />
-              </button>
-              <iframe
-                src={examPdfUrl}
-                title="Exam PDF"
-                className="w-full h-[70vh] rounded"
-              />
+      ) : (
+        // Exam list
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {exams.map((exam) => (
+            <div
+              key={exam.id}
+              onClick={() => {
+                setSelectedExam(exam);
+                fetchExamQuestions(exam.id, 0);
+              }}
+            >
+              <ExamCard exam={exam} />
             </div>
-          </div>
-        )}
-      </div>
-    ) : (
-      // Exam list
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {exams.map((exam) => (
-          <div key={exam.id} onClick={() => {
-            setSelectedExam(exam);
-            fetchExamQuestions(exam.id, 0);
-          }}>
-            <ExamCard exam={exam} />
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-);
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   // Fetch absence requests
   const fetchAbsenceRequests = async () => {
@@ -1304,15 +1327,14 @@ const renderExamsTab = () => (
     try {
       const token = getToken();
       if (!token) throw new Error("Authentication token not found");
+      const actionPath = action === "APPROVED" ? "approve" : "reject";
       const response = await fetch(
-        `http://localhost:8080/education/api/leave-request/${selectedAbsence.id}/status`,
+        `http://localhost:8080/education/api/leave-request/${selectedAbsence.id}/${actionPath}`,
         {
           method: "PUT",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
           },
-          body: JSON.stringify({ status: action }),
         }
       );
       const data = await response.json();
