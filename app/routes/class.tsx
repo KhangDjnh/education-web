@@ -23,6 +23,7 @@ import {
   ArrowTopRightOnSquareIcon,
   PlusIcon
 } from "@heroicons/react/24/outline";
+import { CheckCircleIcon, XCircleIcon, ClockIcon, UserCircleIcon, CalendarDaysIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/solid";
 
 interface ClassData {
   id: number;
@@ -68,6 +69,76 @@ interface DocumentApiResponse {
   result: Document[];
 }
 
+// Add attendance status type
+type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE";
+
+interface AttendanceRecord {
+  studentId: number;
+  status: AttendanceStatus;
+}
+
+// Thêm interface cho Absence Request
+interface AbsenceRequest {
+  id: number;
+  studentId: number;
+  studentName: string;
+  classId: number;
+  leaveDate: string;
+  reason: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+}
+
+// Absence Request Card Component
+const AbsenceRequestCard: React.FC<{
+  request: AbsenceRequest;
+  onClick: () => void;
+  selected: boolean;
+}> = ({ request, onClick, selected }) => {
+  // Chọn icon và màu theo status
+  let statusIcon, statusColor, statusText;
+  if (request.status === "APPROVED") {
+    statusIcon = <CheckCircleIcon className="h-6 w-6 text-green-500" />;
+    statusColor = "bg-green-100 text-green-700";
+    statusText = "Approved";
+  } else if (request.status === "REJECTED") {
+    statusIcon = <XCircleIcon className="h-6 w-6 text-red-500" />;
+    statusColor = "bg-red-100 text-red-700";
+    statusText = "Rejected";
+  } else {
+    statusIcon = <ClockIcon className="h-6 w-6 text-yellow-500" />;
+    statusColor = "bg-yellow-100 text-yellow-700";
+    statusText = "Pending";
+  }
+
+  return (
+    <div
+      className={`cursor-pointer rounded-xl shadow-md bg-white hover:shadow-lg transition-all border-2 ${selected ? "border-blue-500" : "border-transparent"} p-4 flex items-center space-x-4`}
+      onClick={onClick}
+    >
+      <UserCircleIcon className="h-12 w-12 text-blue-400" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center space-x-2 text-black">
+          <span className="font-semibold text-gray-800">{request.studentName}</span>
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor} flex items-center space-x-1`}>
+            {statusIcon}
+            <span>{statusText}</span>
+          </span>
+        </div>
+        <div className="flex items-center text-sm text-gray-500 mt-1 space-x-3">
+          <span className="flex items-center text-black">
+            <CalendarDaysIcon className="h-4 w-4 mr-1" />
+            {new Date(request.leaveDate).toLocaleDateString()}
+          </span>
+          <span className="flex items-center">
+            <ChatBubbleLeftRightIcon className="h-4 w-4 mr-1" />
+            {request.reason.length > 25 ? request.reason.slice(0, 25) + "..." : request.reason}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function ClassPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -91,6 +162,19 @@ export default function ClassPage() {
     title: "",
     filePath: ""
   });
+
+  // Attendance states
+  const [attendanceList, setAttendanceList] = useState<AttendanceRecord[]>([]);
+  const [attendanceSubmitting, setAttendanceSubmitting] = useState(false);
+  const [attendanceSuccess, setAttendanceSuccess] = useState<string | null>(null);
+  const [attendanceError, setAttendanceError] = useState<string | null>(null);
+
+  // Absence Requests state
+  const [absenceRequests, setAbsenceRequests] = useState<AbsenceRequest[]>([]);
+  const [loadingAbsence, setLoadingAbsence] = useState(false);
+  const [absenceError, setAbsenceError] = useState<string | null>(null);
+  const [selectedAbsence, setSelectedAbsence] = useState<AbsenceRequest | null>(null);
+  const [absenceActionLoading, setAbsenceActionLoading] = useState(false);
 
   useEffect(() => {
     const checkAuthAndLoadClass = async () => {
@@ -135,6 +219,25 @@ export default function ClassPage() {
     }
   }, [activeTab, classData]);
   
+  // Thêm useEffect để tự động load danh sách học sinh khi vào tab Attendance
+  useEffect(() => {
+    if (activeTab === "attendance" && classData) {
+      // Nếu chưa có danh sách học sinh thì fetch
+      if (students.length === 0) {
+        fetchStudents();
+      }
+      // Khởi tạo danh sách điểm danh mặc định là PRESENT nếu chưa có
+      setAttendanceList(
+        students.map((student) => ({
+          studentId: student.id,
+          status: "PRESENT" as AttendanceStatus,
+        }))
+      );
+    }
+    // eslint-disable-next-line
+  }, [activeTab, classData, students.length]);
+
+  // Fetch class data
   const fetchClassData = async () => {
     try {
       console.log("Fetching class data for ID:", id);
@@ -617,6 +720,386 @@ export default function ClassPage() {
     );
   };
 
+  // Update attendance status for a student
+  const handleAttendanceChange = (studentId: number, status: AttendanceStatus) => {
+    setAttendanceList((prev) =>
+      prev.map((record) =>
+        record.studentId === studentId ? { ...record, status } : record
+      )
+    );
+  };
+
+  // Submit attendance
+  const handleSubmitAttendance = async () => {
+    setAttendanceSubmitting(true);
+    setAttendanceSuccess(null);
+    setAttendanceError(null);
+    try {
+      const token = getToken();
+      if (!token) throw new Error("Authentication token not found");
+
+      // Today's date in YYYY-MM-DD
+      const today = new Date();
+      const attendanceDate = today.toISOString().slice(0, 10);
+
+      // If attendanceList is empty, initialize with all students as PRESENT
+      const attendances =
+        attendanceList.length > 0
+          ? attendanceList
+          : students.map((student) => ({
+              studentId: student.id,
+              status: "PRESENT" as AttendanceStatus,
+            }));
+
+      const response = await fetch("http://localhost:8080/education/api/attendance", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          classId: classData?.id,
+          attendanceDate,
+          attendances,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.code === 1000) {
+        setAttendanceSuccess("Attendance submitted successfully!");
+      } else {
+        throw new Error(data.message || "Failed to submit attendance");
+      }
+    } catch (err) {
+      setAttendanceError(
+        err instanceof Error ? err.message : "An error occurred while submitting attendance"
+      );
+    } finally {
+      setAttendanceSubmitting(false);
+    }
+  };
+
+  // Render attendance tab
+  const renderAttendanceTab = () => {
+    // Nếu đang loading học sinh
+    if (loadingStudents) {
+      return (
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mb-2"></div>
+            <p className="text-gray-600">Loading students...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (studentError) {
+      return (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error! </strong>
+          <span className="block sm:inline">{studentError}</span>
+        </div>
+      );
+    }
+
+    // Nếu không có học sinh
+    if (students.length === 0) {
+      return (
+        <div className="text-center py-8 bg-gray-50 rounded-lg">
+          <UserGroupIcon className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-lg font-medium text-gray-900">No students yet</h3>
+          <p className="mt-1 text-sm text-gray-500">Add students to start attendance.</p>
+        </div>
+      );
+    }
+
+    // Giao diện điểm danh
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmitAttendance();
+        }}
+      >
+        <div className="mb-6 flex items-center justify-between">
+          <h3 className="text-xl font-bold text-gray-800">
+            Attendance for Today ({new Date().toLocaleDateString()})
+          </h3>
+          <button
+            type="submit"
+            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg text-sm font-medium flex items-center"
+            disabled={attendanceSubmitting}
+          >
+            <ClipboardDocumentCheckIcon className="h-5 w-5 mr-2" />
+            {attendanceSubmitting ? "Submitting..." : "Submit Attendance"}
+          </button>
+        </div>
+        {attendanceSuccess && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4" role="alert">
+            <span>{attendanceSuccess}</span>
+          </div>
+        )}
+        {attendanceError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
+            <span>{attendanceError}</span>
+          </div>
+        )}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 bg-white rounded-lg shadow">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Present</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Late</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Absent</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {students.map((student) => {
+                const record = attendanceList.find((r) => r.studentId === student.id) || {
+                  studentId: student.id,
+                  status: "PRESENT" as AttendanceStatus,
+                };
+                return (
+                  <tr key={student.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0 bg-purple-100 rounded-full flex items-center justify-center">
+                          <span className="text-purple-800 font-medium text-sm">
+                            {student.firstName[0]}{student.lastName[0]}
+                          </span>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {student.firstName} {student.lastName}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.username}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.email}</td>
+                    {/* Present Checkbox */}
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <input
+                        type="checkbox"
+                        checked={record.status === "PRESENT"}
+                        onChange={() => handleAttendanceChange(student.id, "PRESENT")}
+                      />
+                    </td>
+                    {/* Late Checkbox */}
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <input
+                        type="checkbox"
+                        checked={record.status === "LATE"}
+                        onChange={() => handleAttendanceChange(student.id, "LATE")}
+                      />
+                    </td>
+                    {/* Absent Checkbox */}
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <input
+                        type="checkbox"
+                        checked={record.status === "ABSENT"}
+                        onChange={() => handleAttendanceChange(student.id, "ABSENT")}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </form>
+    );
+  };
+
+  // Fetch absence requests
+  const fetchAbsenceRequests = async () => {
+    setLoadingAbsence(true);
+    setAbsenceError(null);
+    try {
+      const token = getToken();
+      if (!token) throw new Error("Authentication token not found");
+      const response = await fetch(`http://localhost:8080/education/api/leave-request/class/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error("Failed to fetch absence requests");
+      const data = await response.json();
+      if (data.code === 1000) {
+        setAbsenceRequests(data.result);
+      } else {
+        throw new Error(data.message || "Failed to fetch absence requests");
+      }
+    } catch (err) {
+      setAbsenceError(err instanceof Error ? err.message : "An error occurred while fetching absence requests");
+    } finally {
+      setLoadingAbsence(false);
+    }
+  };
+
+  // Approve/Reject absence request
+  const handleAbsenceAction = async (action: "APPROVED" | "REJECTED") => {
+    if (!selectedAbsence) return;
+    setAbsenceActionLoading(true);
+    try {
+      const token = getToken();
+      if (!token) throw new Error("Authentication token not found");
+      const response = await fetch(`http://localhost:8080/education/api/leave-request/${selectedAbsence.id}/status`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ status: action })
+      });
+      const data = await response.json();
+      if (data.code === 1000) {
+        // Update local state
+        setAbsenceRequests((prev) =>
+          prev.map((req) =>
+            req.id === selectedAbsence.id ? { ...req, status: action } : req
+          )
+        );
+        setSelectedAbsence({ ...selectedAbsence, status: action });
+      } else {
+        throw new Error(data.message || "Failed to update status");
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setAbsenceActionLoading(false);
+    }
+  };
+
+  // Load absence requests when tab active
+  useEffect(() => {
+    if (activeTab === "absence" && classData) {
+      fetchAbsenceRequests();
+      setSelectedAbsence(null);
+    }
+    // eslint-disable-next-line
+  }, [activeTab, classData]);
+
+  // Render Absence Requests tab
+  const renderAbsenceTab = () => {
+    if (loadingAbsence) {
+      return (
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-500 mb-2"></div>
+            <p className="text-gray-600">Loading absence requests...</p>
+          </div>
+        </div>
+      );
+    }
+    if (absenceError) {
+      return (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error! </strong>
+          <span className="block sm:inline">{absenceError}</span>
+        </div>
+      );
+    }
+    if (absenceRequests.length === 0) {
+      return (
+        <div className="text-center py-8 bg-gray-50 rounded-lg">
+          <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="No requests" className="mx-auto h-16 w-16 opacity-60" />
+          <h3 className="mt-2 text-lg font-medium text-gray-900">No absence requests</h3>
+          <p className="mt-1 text-sm text-gray-500">No student has submitted a leave request yet.</p>
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-col md:flex-row gap-8">
+        {/* List of requests */}
+        <div className="flex-1 space-y-4">
+          {absenceRequests.map((req) => (
+            <AbsenceRequestCard
+              key={req.id}
+              request={req}
+              onClick={() => setSelectedAbsence(req)}
+              selected={selectedAbsence?.id === req.id}
+            />
+          ))}
+        </div>
+        {/* Detail panel */}
+        <div className="flex-1">
+          {selectedAbsence ? (
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-blue-100">
+              <div className="flex items-center space-x-4 mb-4">
+                <UserCircleIcon className="h-14 w-14 text-blue-400" />
+                <div>
+                  <div className="text-lg font-semibold text-gray-800">{selectedAbsence.studentName}</div>
+                  <div className="text-sm text-gray-500">Student ID: {selectedAbsence.studentId}</div>
+                </div>
+              </div>
+              <div className="mb-4">
+                <div className="flex items-center mb-2">
+                  <CalendarDaysIcon className="h-5 w-5 text-blue-500 mr-2" />
+                  <span className="font-medium text-gray-700">Leave Date:</span>
+                  <span className="ml-2">{new Date(selectedAbsence.leaveDate).toLocaleDateString()}</span>
+                </div>
+                <div className="flex items-center mb-2">
+                  <ChatBubbleLeftRightIcon className="h-5 w-5 text-blue-500 mr-2" />
+                  <span className="font-medium text-gray-700">Reason:</span>
+                  <span className="ml-2">{selectedAbsence.reason}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="font-medium text-gray-700 mr-2">Status:</span>
+                  {selectedAbsence.status === "APPROVED" && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                      <CheckCircleIcon className="h-4 w-4 mr-1" /> Approved
+                    </span>
+                  )}
+                  {selectedAbsence.status === "REJECTED" && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-medium">
+                      <XCircleIcon className="h-4 w-4 mr-1" /> Rejected
+                    </span>
+                  )}
+                  {selectedAbsence.status === "PENDING" && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">
+                      <ClockIcon className="h-4 w-4 mr-1" /> Pending
+                    </span>
+                  )}
+                </div>
+              </div>
+              {selectedAbsence.status === "PENDING" && (
+                <div className="flex space-x-4 mt-6">
+                  <button
+                    type="button"
+                    disabled={absenceActionLoading}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center justify-center"
+                    onClick={() => handleAbsenceAction("APPROVED")}
+                  >
+                    <CheckCircleIcon className="h-5 w-5 mr-2" />
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    disabled={absenceActionLoading}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium flex items-center justify-center"
+                    onClick={() => handleAbsenceAction("REJECTED")}
+                  >
+                    <XCircleIcon className="h-5 w-5 mr-2" />
+                    Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Select request" className="h-20 w-20 mb-4 opacity-60" />
+              <span className="text-lg">Select a request to view details</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -794,7 +1277,9 @@ export default function ClassPage() {
                 {/* Render content based on active tab */}
                 {activeTab === "students" && renderStudentsTab()}
                 {activeTab === "documents" && renderDocumentsTab()}
-                {!["students", "documents"].includes(activeTab) && (
+                {activeTab === "attendance" && renderAttendanceTab()}
+                {activeTab === "absence" && renderAbsenceTab()}
+                {!["students", "documents", "attendance", "absence"].includes(activeTab) && (
                   <div className="bg-gray-50 rounded-lg p-12 flex items-center justify-center">
                     <div className="text-center">
                       <div className="text-4xl text-gray-300 flex justify-center">
@@ -820,4 +1305,4 @@ export default function ClassPage() {
       <Footer />
     </div>
   );
-} 
+}
