@@ -403,7 +403,7 @@ export default function ProfilePage() {
                           value={editedProfile.firstName || ""}
                           onChange={handleEditChange}
                           required
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 !text-black"
                         />
                       </div>
                       
@@ -418,7 +418,7 @@ export default function ProfilePage() {
                           value={editedProfile.lastName || ""}
                           onChange={handleEditChange}
                           required
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 !text-black"
                         />
                       </div>
                       
@@ -432,7 +432,7 @@ export default function ProfilePage() {
                           id="dob"
                           value={editedProfile.dob?.split('T')[0] || ""}
                           onChange={handleEditChange}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 !text-black"
                         />
                       </div>
                     </div>
@@ -486,7 +486,7 @@ export default function ProfilePage() {
                           value={passwordData.oldPassword}
                           onChange={handlePasswordChange}
                           required
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 !text-black"
                         />
                       </div>
                       
@@ -501,7 +501,7 @@ export default function ProfilePage() {
                           value={passwordData.newPassword}
                           onChange={handlePasswordChange}
                           required
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 !text-black"
                         />
                       </div>
                       
@@ -516,7 +516,7 @@ export default function ProfilePage() {
                           value={passwordData.confirmPassword}
                           onChange={handlePasswordChange}
                           required
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 !text-black"
                         />
                       </div>
                     </div>

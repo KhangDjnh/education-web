@@ -24,6 +24,7 @@ import {
   PlusIcon
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon, XCircleIcon, ClockIcon, UserCircleIcon, CalendarDaysIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/solid";
+import AbsenceRequestCard from "../components/AbsenceRequestCard";
 
 interface ClassData {
   id: number;
@@ -87,57 +88,6 @@ interface AbsenceRequest {
   reason: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
 }
-
-// Absence Request Card Component
-const AbsenceRequestCard: React.FC<{
-  request: AbsenceRequest;
-  onClick: () => void;
-  selected: boolean;
-}> = ({ request, onClick, selected }) => {
-  // Chọn icon và màu theo status
-  let statusIcon, statusColor, statusText;
-  if (request.status === "APPROVED") {
-    statusIcon = <CheckCircleIcon className="h-6 w-6 text-green-500" />;
-    statusColor = "bg-green-100 text-green-700";
-    statusText = "Approved";
-  } else if (request.status === "REJECTED") {
-    statusIcon = <XCircleIcon className="h-6 w-6 text-red-500" />;
-    statusColor = "bg-red-100 text-red-700";
-    statusText = "Rejected";
-  } else {
-    statusIcon = <ClockIcon className="h-6 w-6 text-yellow-500" />;
-    statusColor = "bg-yellow-100 text-yellow-700";
-    statusText = "Pending";
-  }
-
-  return (
-    <div
-      className={`cursor-pointer rounded-xl shadow-md bg-white hover:shadow-lg transition-all border-2 ${selected ? "border-blue-500" : "border-transparent"} p-4 flex items-center space-x-4`}
-      onClick={onClick}
-    >
-      <UserCircleIcon className="h-12 w-12 text-blue-400" />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center space-x-2 text-black">
-          <span className="font-semibold text-gray-800">{request.studentName}</span>
-          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor} flex items-center space-x-1`}>
-            {statusIcon}
-            <span>{statusText}</span>
-          </span>
-        </div>
-        <div className="flex items-center text-sm text-gray-500 mt-1 space-x-3">
-          <span className="flex items-center text-black">
-            <CalendarDaysIcon className="h-4 w-4 mr-1" />
-            {new Date(request.leaveDate).toLocaleDateString()}
-          </span>
-          <span className="flex items-center">
-            <ChatBubbleLeftRightIcon className="h-4 w-4 mr-1" />
-            {request.reason.length > 25 ? request.reason.slice(0, 25) + "..." : request.reason}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export default function ClassPage() {
   const { id } = useParams<{ id: string }>();
@@ -1040,12 +990,12 @@ export default function ClassPage() {
                 <div className="flex items-center mb-2">
                   <CalendarDaysIcon className="h-5 w-5 text-blue-500 mr-2" />
                   <span className="font-medium text-gray-700">Leave Date:</span>
-                  <span className="ml-2">{new Date(selectedAbsence.leaveDate).toLocaleDateString()}</span>
+                  <span className="ml-2 !text-black">{new Date(selectedAbsence.leaveDate).toLocaleDateString()}</span>
                 </div>
                 <div className="flex items-center mb-2">
                   <ChatBubbleLeftRightIcon className="h-5 w-5 text-blue-500 mr-2" />
                   <span className="font-medium text-gray-700">Reason:</span>
-                  <span className="ml-2">{selectedAbsence.reason}</span>
+                  <span className="ml-2 !text-black">{selectedAbsence.reason}</span>
                 </div>
                 <div className="flex items-center">
                   <span className="font-medium text-gray-700 mr-2">Status:</span>
