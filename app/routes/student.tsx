@@ -178,6 +178,7 @@ export default function StudentPage() {
                 description={classItem.description}
                 semester={classItem.semester}
                 createdAt={classItem.createdAt}
+                role="STUDENT"
               />
             ))}
           </div>

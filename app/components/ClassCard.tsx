@@ -8,6 +8,7 @@ interface ClassCardProps {
   description: string;
   semester: string;
   createdAt: string;
+  role: string;
 }
 
 const ClassCard: React.FC<ClassCardProps> = ({
@@ -17,6 +18,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
   description,
   semester,
   createdAt,
+  role
 }) => {
   // Format the date
   const formattedDate = new Date(createdAt).toLocaleDateString('en-US', {
@@ -24,6 +26,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
     month: 'short',
     day: 'numeric'
   });
+  const classUrl = role === "STUDENT" ? `/student/class/${id}` : `/class/${id}`;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-300">
@@ -44,7 +47,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
       <div className="flex justify-between items-center pt-2 text-sm text-gray-500 border-t border-gray-100">
         <span>Created: {formattedDate}</span>
         <Link
-          to={`/class/${id}`}
+          to={classUrl}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"
         >
           View Class
