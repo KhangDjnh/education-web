@@ -138,6 +138,12 @@ export default function ClassPage() {
   const [questionBankError, setQuestionBankError] = useState<string | null>(null);
   const [showExamModal, setShowExamModal] = useState(false);
 
+  // State for questions bank search
+  const [questionSearchKeyword, setQuestionSearchKeyword] = useState("");
+  const [questionSearchChapter, setQuestionSearchChapter] = useState("");
+  const [questionSearchLevel, setQuestionSearchLevel] = useState("");
+  const [isSearchingQuestions, setIsSearchingQuestions] = useState(false);
+
   useEffect(() => {
     const checkAuthAndLoadClass = async () => {
       try {
@@ -1151,6 +1157,57 @@ export default function ClassPage() {
     }
   };
 
+  // Search handler
+  const handleQuestionSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setLoadingQuestions(true);
+    setIsSearchingQuestions(true);
+    setQuestionBankError(null);
+    try {
+      const token = getToken();
+      const body: any = {
+        classId: id,
+      };
+      if (questionSearchKeyword.trim()) body.keyword = questionSearchKeyword.trim();
+      if (questionSearchChapter.trim()) body.chapter = Number(questionSearchChapter);
+      if (questionSearchLevel) body.level = questionSearchLevel;
+      const res = await fetch(
+        "http://localhost:8080/education/api/questions/search",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
+      const data = await res.json();
+      if (data.code === 1000) {
+        setQuestions(data.result.content);
+        setQuestionPage(data.result.number);
+        setQuestionTotalPages(data.result.totalPages);
+      } else {
+        throw new Error(data.message || "Failed to search questions");
+      }
+    } catch (err) {
+      setQuestionBankError(
+        err instanceof Error ? err.message : "An error occurred"
+      );
+    } finally {
+      setLoadingQuestions(false);
+    }
+  };
+
+  // Reset search (show all)
+  const handleResetQuestionSearch = () => {
+    setQuestionSearchKeyword("");
+    setQuestionSearchChapter("");
+    setQuestionSearchLevel("");
+    setIsSearchingQuestions(false);
+    fetchQuestions();
+  };
+
   // Load questions when tab active
   useEffect(() => {
     if (activeTab === "questions") {
@@ -1187,25 +1244,27 @@ export default function ClassPage() {
               />
             ))}
             {/* Pagination */}
-            <div className="flex justify-center mt-4 space-x-2">
-              <button
-                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
-                disabled={questionPage === 0}
-                onClick={() => fetchQuestions(questionPage - 1)}
-              >
-                Prev
-              </button>
-              <span className="px-2 py-1 text-gray-700">
-                Page {questionPage + 1} / {questionTotalPages}
-              </span>
-              <button
-                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
-                disabled={questionPage + 1 >= questionTotalPages}
-                onClick={() => fetchQuestions(questionPage + 1)}
-              >
-                Next
-              </button>
-            </div>
+            {!isSearchingQuestions && (
+              <div className="flex justify-center mt-4 space-x-2">
+                <button
+                  className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
+                  disabled={questionPage === 0}
+                  onClick={() => fetchQuestions(questionPage - 1)}
+                >
+                  Prev
+                </button>
+                <span className="px-2 py-1 text-gray-700">
+                  Page {questionPage + 1} / {questionTotalPages}
+                </span>
+                <button
+                  className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
+                  disabled={questionPage + 1 >= questionTotalPages}
+                  onClick={() => fetchQuestions(questionPage + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </>
         )}
         {/* Create Exam Button */}
@@ -1217,10 +1276,71 @@ export default function ClassPage() {
           >
             Tạo Exam ({selectedQuestions.length} câu hỏi)
           </button>
+          {isSearchingQuestions && (
+            <button
+              className="ml-3 px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-black"
+              onClick={handleResetQuestionSearch}
+            >
+              Reset Search
+            </button>
+          )}
         </div>
       </div>
-      {/* Question detail */}
+      {/* Question detail & search */}
       <div className="flex-1">
+        {/* Search bar */}
+        <form
+          className="bg-white rounded-lg shadow p-4 mb-4 flex flex-col md:flex-row md:items-end gap-3"
+          onSubmit={handleQuestionSearch}
+        >
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Keyword</label>
+            <div className="relative text-black">
+              <input
+                type="text"
+                className="w-full border rounded px-3 py-2 pr-10"
+                placeholder="Nhập từ khóa..."
+                value={questionSearchKeyword}
+                onChange={e => setQuestionSearchKeyword(e.target.value)}
+              />
+              <MagnifyingGlassIcon className="absolute right-2 top-2 h-5 w-5 text-gray-400" />
+            </div>
+          </div>
+          <div className="text-black">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Chapter</label>
+            <input
+              type="number"
+              min={1}
+              className="w-20 border rounded px-2 py-2"
+              placeholder="Chương"
+              value={questionSearchChapter}
+              onChange={e => setQuestionSearchChapter(e.target.value)}
+            />
+          </div>
+          <div className="text-black">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Level</label>
+            <select
+              className="w-32 border rounded px-2 py-2"
+              value={questionSearchLevel}
+              onChange={e => setQuestionSearchLevel(e.target.value)}
+            >
+              <option value="">All</option>
+              <option value="EASY">Easy</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HARD">Hard</option>
+              <option value="VERY_HARD">Very Hard</option>
+            </select>
+          </div>
+          <div>
+            <button
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium"
+            >
+              Search
+            </button>
+          </div>
+        </form>
+        {/* Question detail */}
         {selectedQuestionDetail ? (
           <div className="bg-white rounded-xl shadow-lg p-6 border border-blue-100 !text-black">
             <div className="text-lg font-semibold text-gray-800 mb-2">
@@ -1257,7 +1377,17 @@ export default function ClassPage() {
       </div>
       {/* Exam Modal */}
       {showExamModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{
+            backgroundImage: "url('/images/exam.png')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+            // fallback for dark overlay if needed:
+            // backgroundColor: "rgba(0,0,0,0.7)",
+          }}
+        >
           <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-lg">
             <h2 className="text-xl font-bold mb-4 text-black">Tạo Exam</h2>
             <form
