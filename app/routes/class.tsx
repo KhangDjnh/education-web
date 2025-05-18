@@ -25,6 +25,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon, XCircleIcon, ClockIcon, UserCircleIcon, CalendarDaysIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/solid";
 import AbsenceRequestCard from "../components/AbsenceRequestCard";
+import QuestionCard from "../components/QuestionCard";
+import type { Question } from "../components/QuestionCard";
 
 interface ClassData {
   id: number;
@@ -125,6 +127,16 @@ export default function ClassPage() {
   const [absenceError, setAbsenceError] = useState<string | null>(null);
   const [selectedAbsence, setSelectedAbsence] = useState<AbsenceRequest | null>(null);
   const [absenceActionLoading, setAbsenceActionLoading] = useState(false);
+
+  // State for questions bank
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [selectedQuestions, setSelectedQuestions] = useState<number[]>([]);
+  const [selectedQuestionDetail, setSelectedQuestionDetail] = useState<any>(null);
+  const [questionPage, setQuestionPage] = useState(0);
+  const [questionTotalPages, setQuestionTotalPages] = useState(1);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [questionBankError, setQuestionBankError] = useState<string | null>(null);
+  const [showExamModal, setShowExamModal] = useState(false);
 
   useEffect(() => {
     const checkAuthAndLoadClass = async () => {
@@ -1050,6 +1062,259 @@ export default function ClassPage() {
     );
   };
 
+  // Fetch questions with pagination
+  const fetchQuestions = async (page = 0) => {
+    setLoadingQuestions(true);
+    setQuestionBankError(null);
+    try {
+      const token = getToken();
+      const res = await fetch(
+        `http://localhost:8080/education/api/questions?classId=${id}&page=${page}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (data.code === 1000) {
+        setQuestions(data.result.content);
+        setQuestionPage(data.result.number);
+        setQuestionTotalPages(data.result.totalPages);
+      } else {
+        throw new Error(data.message || "Failed to fetch questions");
+      }
+    } catch (err) {
+      setQuestionBankError(
+        err instanceof Error ? err.message : "An error occurred"
+      );
+    } finally {
+      setLoadingQuestions(false);
+    }
+  };
+
+  // Fetch question detail
+  const fetchQuestionDetail = async (qid: number) => {
+    try {
+      const token = getToken();
+      const res = await fetch(
+        `http://localhost:8080/education/api/questions/${qid}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (data.code === 1000) {
+        setSelectedQuestionDetail(data.result);
+      }
+    } catch {}
+  };
+
+  // Handle check/uncheck
+  const handleCheckQuestion = (qid: number, checked: boolean) => {
+    setSelectedQuestions(prev =>
+      checked ? [...prev, qid] : prev.filter(id => id !== qid)
+    );
+  };
+
+  // Handle create exam
+  const handleCreateExam = async (examData: {
+    title: string;
+    description: string;
+    startTime: string;
+    endTime: string;
+  }) => {
+    try {
+      const token = getToken();
+      const res = await fetch(
+        "http://localhost:8080/education/api/exams/choose",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            classId: id,
+            title: examData.title,
+            description: examData.description,
+            questionIds: selectedQuestions,
+            startTime: examData.startTime,
+            endTime: examData.endTime,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (data.code === 1000) {
+        alert("Exam created successfully!");
+        setSelectedQuestions([]);
+        setShowExamModal(false);
+      } else {
+        alert(data.message || "Failed to create exam");
+      }
+    } catch (err) {
+      alert("Error creating exam");
+    }
+  };
+
+  // Load questions when tab active
+  useEffect(() => {
+    if (activeTab === "questions") {
+      fetchQuestions();
+      setSelectedQuestionDetail(null);
+    }
+    // eslint-disable-next-line
+  }, [activeTab]);
+
+  // Render questions bank tab
+  const renderQuestionsTab = () => (
+    <div className="flex flex-col md:flex-row gap-8">
+      {/* List of questions */}
+      <div className="flex-1">
+        {loadingQuestions ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-2"></div>
+            <p className="text-gray-600">Loading questions...</p>
+          </div>
+        ) : questionBankError ? (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <span>{questionBankError}</span>
+          </div>
+        ) : (
+          <>
+            {questions.map(q => (
+              <QuestionCard
+                key={q.id}
+                question={q}
+                checked={selectedQuestions.includes(q.id)}
+                onCheck={checked => handleCheckQuestion(q.id, checked)}
+                onClick={() => fetchQuestionDetail(q.id)}
+                selected={selectedQuestionDetail?.id === q.id}
+              />
+            ))}
+            {/* Pagination */}
+            <div className="flex justify-center mt-4 space-x-2">
+              <button
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
+                disabled={questionPage === 0}
+                onClick={() => fetchQuestions(questionPage - 1)}
+              >
+                Prev
+              </button>
+              <span className="px-2 py-1 text-gray-700">
+                Page {questionPage + 1} / {questionTotalPages}
+              </span>
+              <button
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
+                disabled={questionPage + 1 >= questionTotalPages}
+                onClick={() => fetchQuestions(questionPage + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </>
+        )}
+        {/* Create Exam Button */}
+        <div className="mt-6">
+          <button
+            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg text-sm font-medium"
+            disabled={selectedQuestions.length === 0}
+            onClick={() => setShowExamModal(true)}
+          >
+            Tạo Exam ({selectedQuestions.length} câu hỏi)
+          </button>
+        </div>
+      </div>
+      {/* Question detail */}
+      <div className="flex-1">
+        {selectedQuestionDetail ? (
+          <div className="bg-white rounded-xl shadow-lg p-6 border border-blue-100 !text-black">
+            <div className="text-lg font-semibold text-gray-800 mb-2">
+              {selectedQuestionDetail.question}
+            </div>
+            <div className="mb-2">
+              <span className="font-medium">Chapter:</span> {selectedQuestionDetail.chapter}
+            </div>
+            <div className="mb-2">
+              <span className="font-medium">Level:</span> {selectedQuestionDetail.level}
+            </div>
+            <div className="mb-2">
+              <span className="font-medium">A:</span> {selectedQuestionDetail.optionA}
+            </div>
+            <div className="mb-2">
+              <span className="font-medium">B:</span> {selectedQuestionDetail.optionB}
+            </div>
+            <div className="mb-2">
+              <span className="font-medium">C:</span> {selectedQuestionDetail.optionC}
+            </div>
+            <div className="mb-2">
+              <span className="font-medium">D:</span> {selectedQuestionDetail.optionD}
+            </div>
+            <div className="mb-2">
+              <span className="font-medium">Answer:</span> <span className="text-green-700 font-bold">{selectedQuestionDetail.answer}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-gray-400">
+            <ClipboardDocumentCheckIcon className="h-20 w-20 mb-4" />
+            <span className="text-lg">Chọn một câu hỏi để xem chi tiết</span>
+          </div>
+        )}
+      </div>
+      {/* Exam Modal */}
+      {showExamModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-lg">
+            <h2 className="text-xl font-bold mb-4 text-black">Tạo Exam</h2>
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                const form = e.target as typeof e.target & {
+                  title: { value: string };
+                  description: { value: string };
+                  startTime: { value: string };
+                  endTime: { value: string };
+                };
+                handleCreateExam({
+                  title: form.title.value,
+                  description: form.description.value,
+                  startTime: form.startTime.value,
+                  endTime: form.endTime.value,
+                });
+              }}
+            >
+              <div className="mb-3 text-black">
+                <label className="block text-sm font-medium mb-1">Tiêu đề</label>
+                <input name="title" required className="w-full border rounded px-3 py-2" />
+              </div>
+              <div className="mb-3 text-black">
+                <label className="block text-sm font-medium mb-1">Mô tả</label>
+                <input name="description" required className="w-full border rounded px-3 py-2" />
+              </div>
+              <div className="mb-3 text-black">
+                <label className="block text-sm font-medium mb-1">Thời gian bắt đầu</label>
+                <input name="startTime" type="datetime-local" required className="w-full border rounded px-3 py-2"/>
+              </div>
+              <div className="mb-3 text-black">
+                <label className="block text-sm font-medium mb-1">Thời gian kết thúc</label>
+                <input name="endTime" type="datetime-local" required className="w-full border rounded px-3 py-2" />
+              </div>
+              <div className="flex justify-end space-x-2 mt-4 text-black">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
+                  onClick={() => setShowExamModal(false)}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  Tạo Exam
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -1229,7 +1494,8 @@ export default function ClassPage() {
                 {activeTab === "documents" && renderDocumentsTab()}
                 {activeTab === "attendance" && renderAttendanceTab()}
                 {activeTab === "absence" && renderAbsenceTab()}
-                {!["students", "documents", "attendance", "absence"].includes(activeTab) && (
+                {activeTab === "questions" && renderQuestionsTab()}
+                {!["students", "documents", "attendance", "absence", "questions"].includes(activeTab) && (
                   <div className="bg-gray-50 rounded-lg p-12 flex items-center justify-center">
                     <div className="text-center">
                       <div className="text-4xl text-gray-300 flex justify-center">
