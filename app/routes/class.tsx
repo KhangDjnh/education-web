@@ -21,6 +21,7 @@ import {
   ArrowTopRightOnSquareIcon,
   PlusIcon,
   ChartBarIcon,
+  PaperClipIcon,
 } from "@heroicons/react/24/outline";
 import {
   CheckCircleIcon,
@@ -33,8 +34,10 @@ import {
 import AbsenceRequestCard from "../components/AbsenceRequestCard";
 import QuestionCard from "../components/QuestionCard";
 import ExamCard from "../components/ExamCard";
+import AssignmentCard from "../components/AssignmentCard";
 import type { Exam } from "../components/ExamCard";
 import type { Question } from "../components/QuestionCard";
+import type { Assignment } from "../components/AssignmentCard";
 
 interface ClassData {
   id: number;
@@ -175,6 +178,31 @@ export default function ClassPage() {
   const [loadingExamQuestions, setLoadingExamQuestions] = useState(false);
   const [showExamPdf, setShowExamPdf] = useState(false);
   const [examPdfUrl, setExamPdfUrl] = useState<string | null>(null);
+
+  // ...trong component Assignment...
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
+  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
+
+  const [openedAssignmentId, setOpenedAssignmentId] = useState<number | null>(
+    null
+  );
+  const [showCreateAssignment, setShowCreateAssignment] = useState(false);
+  const [createAssignmentLoading, setCreateAssignmentLoading] = useState(false);
+  const [createAssignmentError, setCreateAssignmentError] = useState<
+    string | null
+  >(null);
+  const [createAssignmentSuccess, setCreateAssignmentSuccess] = useState<
+    string | null
+  >(null);
+  const [assignmentForm, setAssignmentForm] = useState({
+    title: "",
+    content: "",
+    startAt: "",
+    endAt: "",
+    files: [] as File[],
+  });
 
   useEffect(() => {
     const checkAuthAndLoadClass = async () => {
@@ -389,6 +417,36 @@ export default function ClassPage() {
     }
   };
 
+  // Fetch assignments khi vào tab
+  useEffect(() => {
+    if (activeTab === "assignments" && classData) {
+      const fetchAssignments = async () => {
+        setLoadingAssignments(true);
+        setAssignmentError(null);
+        try {
+          const token = getToken();
+          const res = await fetch(
+            `http://localhost:8080/education/api/assignments/${classData.id}/class`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+              credentials: "include",
+            }
+          );
+          const data = await res.json();
+          if (data.code === 1000) setAssignments(data.result);
+          else throw new Error(data.message || "Failed to fetch assignments");
+        } catch (err) {
+          setAssignmentError(
+            err instanceof Error ? err.message : "An error occurred"
+          );
+        } finally {
+          setLoadingAssignments(false);
+        }
+      };
+      fetchAssignments();
+    }
+  }, [activeTab, classData, getToken]);
+
   const handleAddDocument = () => {
     // This would be connected to an actual API in production
     setShowAddDocument(false);
@@ -471,6 +529,59 @@ export default function ClassPage() {
 
   const handleTabClick = (tab: string) => {
     setActiveTab(tab);
+  };
+
+  // Hàm xử lý submit assignment
+  const handleCreateAssignment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateAssignmentLoading(true);
+    setCreateAssignmentError(null);
+    setCreateAssignmentSuccess(null);
+    try {
+      const token = getToken();
+      if (!token || !classData)
+        throw new Error("Authentication or class not found");
+      const formData = new FormData();
+      formData.append("title", assignmentForm.title);
+      formData.append("content", assignmentForm.content);
+      formData.append("classId", String(classData.id));
+      formData.append("startAt", assignmentForm.startAt);
+      formData.append("endAt", assignmentForm.endAt);
+      assignmentForm.files.forEach((file) => formData.append("files", file));
+
+      const res = await fetch(
+        "http://localhost:8080/education/api/assignments",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: "include",
+          body: formData,
+        }
+      );
+      const data = await res.json();
+      if (data.code === 1000) {
+        setAssignments((prev) => [data.result, ...prev]);
+        setShowCreateAssignment(false);
+        setAssignmentForm({
+          title: "",
+          content: "",
+          startAt: "",
+          endAt: "",
+          files: [],
+        });
+        setCreateAssignmentSuccess("Tạo bài tập thành công!");
+      } else {
+        throw new Error(data.message || "Tạo bài tập thất bại");
+      }
+    } catch (err) {
+      setCreateAssignmentError(
+        err instanceof Error ? err.message : "Tạo bài tập thất bại"
+      );
+    } finally {
+      setCreateAssignmentLoading(false);
+    }
   };
 
   // Render the students management tab
@@ -1509,13 +1620,185 @@ export default function ClassPage() {
   };
 
   const renderAssignmentsTab = () => (
-    <div className="text-center py-12">
-      <PencilSquareIcon className="mx-auto h-16 w-16 text-pink-400 mb-4" />
-      <h2 className="text-2xl font-bold mb-2 text-gray-800">Assignments</h2>
-      <p className="text-gray-500 mb-4">
-        Create, assign and review class assignments here.
-      </p>
-      <div className="text-gray-400">This feature is under development.</div>
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-gray-800">Assignments</h2>
+        <button
+          className="flex items-center bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg font-medium"
+          onClick={() => setShowCreateAssignment(true)}
+        >
+          <PlusIcon className="h-5 w-5 mr-1" />
+          Create Assignment
+        </button>
+      </div>
+
+      {/* Form tạo assignment */}
+      {showCreateAssignment && (
+        <form
+          className="bg-pink-50 border border-pink-200 rounded-lg p-6 mb-8"
+          onSubmit={handleCreateAssignment}
+          encType="multipart/form-data"
+        >
+          <h3 className="text-lg font-semibold text-pink-700 mb-4 flex items-center">
+            <PencilSquareIcon className="h-6 w-6 mr-2" />
+            Tạo bài tập mới
+          </h3>
+          {createAssignmentError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2">
+              {createAssignmentError}
+            </div>
+          )}
+          {createAssignmentSuccess && (
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mb-2">
+              {createAssignmentSuccess}
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-black">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tiêu đề
+              </label>
+              <input
+                className="w-full border rounded px-3 py-2"
+                required
+                value={assignmentForm.title}
+                onChange={(e) =>
+                  setAssignmentForm((f) => ({ ...f, title: e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Thời gian bắt đầu
+              </label>
+              <input
+                type="datetime-local"
+                className="w-full border rounded px-3 py-2"
+                required
+                value={assignmentForm.startAt}
+                onChange={(e) =>
+                  setAssignmentForm((f) => ({ ...f, startAt: e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Thời gian kết thúc
+              </label>
+              <input
+                type="datetime-local"
+                className="w-full border rounded px-3 py-2"
+                required
+                value={assignmentForm.endAt}
+                onChange={(e) =>
+                  setAssignmentForm((f) => ({ ...f, endAt: e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                File đính kèm
+              </label>
+              <input
+                type="file"
+                multiple
+                className="w-full"
+                onChange={(e) =>
+                  setAssignmentForm((f) => ({
+                    ...f,
+                    files: e.target.files ? Array.from(e.target.files) : [],
+                  }))
+                }
+              />
+              {assignmentForm.files.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {assignmentForm.files.map((file, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 italic rounded text-xs"
+                    >
+                      <PaperClipIcon className="h-4 w-4 mr-1 text-blue-700" />
+                      {file.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mb-4 text-black">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nội dung
+            </label>
+            <textarea
+              className="w-full border rounded px-3 py-2"
+              rows={3}
+              required
+              value={assignmentForm.content}
+              onChange={(e) =>
+                setAssignmentForm((f) => ({ ...f, content: e.target.value }))
+              }
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
+              onClick={() => setShowCreateAssignment(false)}
+              disabled={createAssignmentLoading}
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded bg-pink-600 hover:bg-pink-700 text-white"
+              disabled={createAssignmentLoading}
+            >
+              {createAssignmentLoading ? "Đang tạo..." : "Tạo bài tập"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {loadingAssignments ? (
+        <div className="flex justify-center items-center h-32">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-500 mb-2"></div>
+          <span className="ml-2 text-gray-600">Đang tải bài tập...</span>
+        </div>
+      ) : assignmentError ? (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-2">
+          {assignmentError}
+        </div>
+      ) : assignments.length === 0 ? (
+        <div className="text-center py-8 text-gray-400">
+          Chưa có bài tập nào.
+        </div>
+      ) : (
+        <div>
+          {assignments.map((a) => (
+            <AssignmentCard
+              key={a.id}
+              assignment={a}
+              opened={openedAssignmentId === a.id}
+              onClick={() =>
+                setOpenedAssignmentId(openedAssignmentId === a.id ? null : a.id)
+              }
+              getToken={() => getToken() ?? ""}
+              onDelete={async (id) => {
+                const token = getToken();
+                await fetch(
+                  `http://localhost:8080/education/api/assignments/${id}`,
+                  {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${token}` },
+                    credentials: "include",
+                  }
+                );
+                setAssignments((prev) => prev.filter((item) => item.id !== id));
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 
