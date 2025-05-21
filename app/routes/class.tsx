@@ -183,8 +183,17 @@ export default function ClassPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
-  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
-
+  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(
+    null
+  );
+  const [showEditAssignment, setShowEditAssignment] = useState(false);
+  const [editAssignmentForm, setEditAssignmentForm] = useState({
+    title: "",
+    content: "",
+    startAt: "",
+    endAt: "",
+    files: [] as File[],
+  });
   const [openedAssignmentId, setOpenedAssignmentId] = useState<number | null>(
     null
   );
@@ -446,6 +455,62 @@ export default function ClassPage() {
       fetchAssignments();
     }
   }, [activeTab, classData, getToken]);
+
+  useEffect(() => {
+    if (editingAssignment) {
+      setEditAssignmentForm({
+        title: editingAssignment.title,
+        content: editingAssignment.content,
+        startAt: editingAssignment.startAt.slice(0, 16),
+        endAt: editingAssignment.endAt.slice(0, 16),
+        files: [],
+      });
+    }
+  }, [editingAssignment]);
+
+  // Hàm submit edit assignment
+  const handleEditAssignment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAssignment) return;
+    setCreateAssignmentLoading(true);
+    setCreateAssignmentError(null);
+    try {
+      const token = getToken();
+      const formData = new FormData();
+      formData.append("title", editAssignmentForm.title);
+      formData.append("content", editAssignmentForm.content);
+      formData.append("startAt", editAssignmentForm.startAt);
+      formData.append("endAt", editAssignmentForm.endAt);
+      editAssignmentForm.files.forEach((file) =>
+        formData.append("files", file)
+      );
+      const res = await fetch(
+        `http://localhost:8080/education/api/assignments/${editingAssignment.id}`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: "include",
+          body: formData,
+        }
+      );
+      const data = await res.json();
+      if (data.code === 1000) {
+        setAssignments((prev) =>
+          prev.map((item) => (item.id === data.result.id ? data.result : item))
+        );
+        setShowEditAssignment(false);
+        setEditingAssignment(null);
+      } else {
+        throw new Error(data.message || "Cập nhật bài tập thất bại");
+      }
+    } catch (err) {
+      setCreateAssignmentError(
+        err instanceof Error ? err.message : "Cập nhật bài tập thất bại"
+      );
+    } finally {
+      setCreateAssignmentLoading(false);
+    }
+  };
 
   const handleAddDocument = () => {
     // This would be connected to an actual API in production
@@ -1759,6 +1824,142 @@ export default function ClassPage() {
         </form>
       )}
 
+      {showEditAssignment && editingAssignment && (
+        <form
+          className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8"
+          onSubmit={handleEditAssignment}
+          encType="multipart/form-data"
+        >
+          <h3 className="text-lg font-semibold text-yellow-700 mb-4 flex items-center">
+            <PencilSquareIcon className="h-6 w-6 mr-2" />
+            Chỉnh sửa bài tập
+          </h3>
+          {createAssignmentError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2">
+              {createAssignmentError}
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-black">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tiêu đề
+              </label>
+              <input
+                className="w-full border rounded px-3 py-2"
+                required
+                value={editAssignmentForm.title}
+                onChange={(e) =>
+                  setEditAssignmentForm((f) => ({
+                    ...f,
+                    title: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Thời gian bắt đầu
+              </label>
+              <input
+                type="datetime-local"
+                className="w-full border rounded px-3 py-2"
+                required
+                value={editAssignmentForm.startAt}
+                onChange={(e) =>
+                  setEditAssignmentForm((f) => ({
+                    ...f,
+                    startAt: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Thời gian kết thúc
+              </label>
+              <input
+                type="datetime-local"
+                className="w-full border rounded px-3 py-2"
+                required
+                value={editAssignmentForm.endAt}
+                onChange={(e) =>
+                  setEditAssignmentForm((f) => ({
+                    ...f,
+                    endAt: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                File đính kèm (chọn để thay thế)
+              </label>
+              <input
+                type="file"
+                multiple
+                className="w-full"
+                onChange={(e) =>
+                  setEditAssignmentForm((f) => ({
+                    ...f,
+                    files: e.target.files ? Array.from(e.target.files) : [],
+                  }))
+                }
+              />
+              {editAssignmentForm.files.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {editAssignmentForm.files.map((file, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 italic rounded text-xs"
+                    >
+                      <PaperClipIcon className="h-4 w-4 mr-1 text-blue-700" />
+                      {file.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mb-4 text-black">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nội dung
+            </label>
+            <textarea
+              className="w-full border rounded px-3 py-2"
+              rows={3}
+              required
+              value={editAssignmentForm.content}
+              onChange={(e) =>
+                setEditAssignmentForm((f) => ({
+                  ...f,
+                  content: e.target.value,
+                }))
+              }
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
+              onClick={() => {
+                setShowEditAssignment(false);
+                setEditingAssignment(null);
+              }}
+              disabled={createAssignmentLoading}
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded bg-yellow-600 hover:bg-yellow-700 text-white"
+              disabled={createAssignmentLoading}
+            >
+              {createAssignmentLoading ? "Đang lưu..." : "Lưu thay đổi"}
+            </button>
+          </div>
+        </form>
+      )}
+
       {loadingAssignments ? (
         <div className="flex justify-center items-center h-32">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-500 mb-2"></div>
@@ -1794,6 +1995,10 @@ export default function ClassPage() {
                   }
                 );
                 setAssignments((prev) => prev.filter((item) => item.id !== id));
+              }}
+              onEdit={(assignment) => {
+                setEditingAssignment(assignment);
+                setShowEditAssignment(true);
               }}
             />
           ))}

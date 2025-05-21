@@ -7,6 +7,7 @@ import {
   ChevronUpIcon,
   ArrowDownTrayIcon,
   TrashIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 
 interface AssignmentFile {
@@ -36,6 +37,7 @@ interface AssignmentCardProps {
   onClick: () => void;
   getToken?: () => string;
   onDelete?: (id: number) => void;
+  onEdit?: (assignment: Assignment) => void; // thêm dòng này
 }
 
 const statusColor = (status: string) => {
@@ -81,6 +83,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
   onClick,
   getToken,
   onDelete,
+  onEdit,
 }) => {
   return (
     <div
@@ -115,23 +118,36 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
           ) : (
             <ChevronDownIcon className="h-6 w-6 text-gray-400" />
           )}
-          {/* Nút xóa chỉ hiển thị khi card đang mở */}
+          {/* Nút edit và xóa chỉ hiển thị khi card đang mở */}
           {opened && (
-            <button
-              type="button"
-              className="ml-2 p-1 rounded hover:bg-red-100"
-              title="Xóa bài tập"
-              onClick={e => {
-                e.stopPropagation();
-                if (
-                  window.confirm("Bạn có chắc chắn muốn xóa bài tập này?")
-                ) {
-                  onDelete && onDelete(assignment.id);
-                }
-              }}
-            >
-              <TrashIcon className="h-6 w-6 text-red-500" />
-            </button>
+            <>
+              <button
+                type="button"
+                className="ml-2 p-1 rounded hover:bg-yellow-100"
+                title="Chỉnh sửa bài tập"
+                onClick={e => {
+                  e.stopPropagation();
+                  onEdit && onEdit(assignment);
+                }}
+              >
+                <PencilSquareIcon className="h-6 w-6 text-yellow-500" />
+              </button>
+              <button
+                type="button"
+                className="ml-2 p-1 rounded hover:bg-red-100"
+                title="Xóa bài tập"
+                onClick={e => {
+                  e.stopPropagation();
+                  if (
+                    window.confirm("Bạn có chắc chắn muốn xóa bài tập này?")
+                  ) {
+                    onDelete && onDelete(assignment.id);
+                  }
+                }}
+              >
+                <TrashIcon className="h-6 w-6 text-red-500" />
+              </button>
+            </>
           )}
         </div>
       </div>
