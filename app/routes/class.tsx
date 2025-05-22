@@ -681,7 +681,7 @@ export default function ClassPage() {
             Students in this class
           </h3>
           <div className="flex space-x-2">
-            <div className="relative">
+            <div className="relative text-black">
               <input
                 type="text"
                 placeholder="Search students..."
