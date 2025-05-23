@@ -8,6 +8,15 @@ interface AssignmentsTabProps {
   classId: string;
 }
 
+interface FileObject {
+  fileName: string;
+  fileType: string;
+  filePath: string;
+  downloadUrl: string;
+  fileSize: number;
+  uploadedAt: string;
+}
+
 export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({ classId }) => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -29,7 +38,7 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({ classId }) => {
       }
 
       const data = await classService.getAssignments(classId, token);
-      setAssignments(data);
+      setAssignments(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching assignments:', err);
       setError(
@@ -42,7 +51,7 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({ classId }) => {
     }
   };
 
-  const handleDelete = async (assignmentId: string) => {
+  const handleDelete = async (assignmentId: number) => {
     try {
       setLoading(true);
       setError(null);
@@ -160,7 +169,7 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({ classId }) => {
                             key={index}
                             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
                           >
-                            {file}
+                            {typeof file === 'string' ? file : (file as FileObject).fileName}
                           </span>
                         ))}
                       </div>

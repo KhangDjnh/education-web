@@ -32,8 +32,8 @@ export const QuestionsTab: React.FC<QuestionsTabProps> = ({ classId }) => {
       }
 
       const data = await classService.getQuestions(classId, currentPage, token);
-      setQuestions(data.questions);
-      setTotalPages(data.totalPages);
+      setQuestions(data.content || []);
+      setTotalPages(data.totalPages || 1);
     } catch (err) {
       console.error('Error fetching questions:', err);
       setError(
@@ -59,13 +59,14 @@ export const QuestionsTab: React.FC<QuestionsTabProps> = ({ classId }) => {
       const data = await classService.searchQuestions(
         classId,
         {
-          searchTerm,
-          chapter: '',
-          level: '',
+          keyword: searchTerm,
+          chapter: undefined,
+          level: undefined,
         },
         token
       );
-      setQuestions(data);
+      setQuestions(data.content || []);
+      setTotalPages(data.totalPages || 1);
     } catch (err) {
       console.error('Error searching questions:', err);
       setError(

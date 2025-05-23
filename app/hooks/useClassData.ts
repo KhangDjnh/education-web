@@ -5,7 +5,7 @@ import { classService } from '../services/classService';
 import type { ClassData } from '../types/class';
 
 export const useClassData = () => {
-  const { id } = useParams<{ id: string }>();
+  const { classId } = useParams<{ classId: string }>();
   const navigate = useNavigate();
   const [classData, setClassData] = useState<ClassData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -16,7 +16,7 @@ export const useClassData = () => {
     const checkAuthAndLoadClass = async () => {
       try {
         setLoading(true);
-        console.log('Class page mounted, checking auth for class ID:', id);
+        console.log('Class page mounted, checking auth for class ID:', classId);
 
         const isSessionValid = await validateSession();
         console.log('Session valid:', isSessionValid);
@@ -26,6 +26,10 @@ export const useClassData = () => {
           sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
           navigate('/signin');
           return;
+        }
+
+        if (!classId) {
+          throw new Error('Class ID is required');
         }
 
         await fetchClassData();
@@ -38,19 +42,23 @@ export const useClassData = () => {
     };
 
     checkAuthAndLoadClass();
-  }, [id, validateSession, navigate]);
+  }, [classId, validateSession, navigate]);
 
   const fetchClassData = async () => {
     try {
-      console.log('Fetching class data for ID:', id);
+      console.log('Fetching class data for ID:', classId);
       const token = getToken();
 
       if (!token) {
         throw new Error('Authentication token not found');
       }
 
+      if (!classId) {
+        throw new Error('Class ID is required');
+      }
+
       console.log('Making API request to fetch class details');
-      const data = await classService.getClassData(id!, token);
+      const data = await classService.getClassData(classId, token);
       setClassData(data);
     } catch (err) {
       console.error('Error fetching class data:', err);

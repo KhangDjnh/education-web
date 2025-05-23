@@ -26,7 +26,10 @@ const ClassCard: React.FC<ClassCardProps> = ({
     month: 'short',
     day: 'numeric'
   });
-  const classUrl = role === "STUDENT" ? `/student/class/${id}` : `/class/${id}`;
+
+  // Ensure id is a number and convert to string for the URL
+  const classId = id.toString();
+  const classUrl = role === "STUDENT" ? `/student/class/${classId}` : `/class/${classId}`;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-300">
