@@ -344,4 +344,108 @@ export const classService = {
       throw new Error(data.message || "Failed to delete assignment");
     }
   },
+
+  // Add student to class
+  addStudent: async (
+    classId: string | undefined | null,
+    studentId: string,
+    token: string
+  ): Promise<{ classId: number; studentId: number }> => {
+    const validClassId = validateClassId(classId);
+    const response = await fetch(`${API_BASE_URL}/class-students`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        classId: validClassId,
+        studentId: studentId,
+      }),
+    });
+    const data = await response.json();
+    if (data.code === 1000) return data.result;
+    throw new Error(data.message || "Failed to add student to class");
+  },
+
+  // Delete student from class
+  deleteStudent: async (
+    classId: string | undefined | null,
+    studentId: string,
+    token: string
+  ): Promise<void> => {
+    const validClassId = validateClassId(classId);
+    const response = await fetch(
+      `${API_BASE_URL}/class-students?classId=${validClassId}&studentId=${studentId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    const data = await response.json();
+    if (data.code !== 1000) {
+      throw new Error(data.message || "Failed to delete student from class");
+    }
+  },
+
+  // Document operations
+  uploadDocument: async (
+    documentData: {
+      classId: string;
+      title: string;
+      filePath: string;
+    },
+    token: string
+  ): Promise<Document> => {
+    const response = await fetch(`${API_BASE_URL}/documents`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(documentData),
+    });
+    const data = await response.json();
+    if (data.code === 1000) return data.result;
+    throw new Error(data.message || "Failed to upload document");
+  },
+
+  updateDocument: async (
+    documentId: number,
+    documentData: {
+      title: string;
+      filePath: string;
+    },
+    token: string
+  ): Promise<Document> => {
+    const response = await fetch(`${API_BASE_URL}/documents/${documentId}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(documentData),
+    });
+    const data = await response.json();
+    if (data.code === 1000) return data.result;
+    throw new Error(data.message || "Failed to update document");
+  },
+
+  deleteDocument: async (
+    documentId: number,
+    token: string
+  ): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/documents/${documentId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data = await response.json();
+    if (data.code !== 1000) {
+      throw new Error(data.message || "Failed to delete document");
+    }
+  },
 };

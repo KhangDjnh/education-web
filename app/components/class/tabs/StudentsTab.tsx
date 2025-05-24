@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserGroupIcon, MagnifyingGlassIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { UserGroupIcon, MagnifyingGlassIcon, PencilSquareIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../contexts/AuthContext';
 import { classService } from '../../../services/classService';
 import type { Student } from '../../../types/class';
@@ -13,6 +13,12 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({ classId }) => {
   const [loadingStudents, setLoadingStudents] = useState<boolean>(false);
   const [studentError, setStudentError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [showConfirmAddModal, setShowConfirmAddModal] = useState<boolean>(false);
+  const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState<boolean>(false);
+  const [newStudentId, setNewStudentId] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const { getToken } = useAuth();
 
   useEffect(() => {
@@ -37,6 +43,61 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({ classId }) => {
         err instanceof Error
           ? err.message
           : 'An error occurred while fetching students'
+      );
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  const handleAddStudent = async () => {
+    try {
+      setIsSubmitting(true);
+      setStudentError(null);
+
+      const token = getToken();
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      await classService.addStudent(classId, newStudentId, token);
+      setShowConfirmAddModal(false);
+      setShowAddModal(false);
+      setNewStudentId('');
+      await fetchStudents(); // Refresh the student list
+    } catch (err) {
+      console.error('Error adding student:', err);
+      setStudentError(
+        err instanceof Error
+          ? err.message
+          : 'An error occurred while adding student'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!studentToDelete) return;
+
+    try {
+      setLoadingStudents(true);
+      setStudentError(null);
+
+      const token = getToken();
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      await classService.deleteStudent(classId, studentToDelete.id.toString(), token);
+      setShowConfirmDeleteModal(false);
+      setStudentToDelete(null);
+      await fetchStudents(); // Refresh the student list
+    } catch (err) {
+      console.error('Error deleting student:', err);
+      setStudentError(
+        err instanceof Error
+          ? err.message
+          : 'An error occurred while deleting student'
       );
     } finally {
       setLoadingStudents(false);
@@ -103,7 +164,10 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({ classId }) => {
             />
             <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          >
             Add Student
           </button>
         </div>
@@ -119,7 +183,10 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({ classId }) => {
             Get started by adding students to this class.
           </p>
           <div className="mt-6">
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+            <button 
+              onClick={() => setShowAddModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+            >
               Add First Student
             </button>
           </div>
@@ -202,7 +269,13 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({ classId }) => {
                       <button className="text-blue-600 hover:text-blue-900">
                         <PencilSquareIcon className="h-5 w-5" />
                       </button>
-                      <button className="text-red-600 hover:text-red-900">
+                      <button 
+                        onClick={() => {
+                          setStudentToDelete(student);
+                          setShowConfirmDeleteModal(true);
+                        }}
+                        className="text-red-600 hover:text-red-900"
+                      >
                         <TrashIcon className="h-5 w-5" />
                       </button>
                     </div>
@@ -211,6 +284,130 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({ classId }) => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Add Student Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Add Student to Class</h3>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="mb-4">
+              <label htmlFor="studentId" className="block text-sm font-medium text-gray-700 mb-1">
+                Student ID
+              </label>
+              <input
+                type="text"
+                id="studentId"
+                value={newStudentId}
+                onChange={(e) => setNewStudentId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter student ID"
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setShowConfirmAddModal(true);
+                }}
+                disabled={isSubmitting || !newStudentId}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? 'Adding...' : 'Add Student'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Add Student Modal */}
+      {showConfirmAddModal && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Confirm Add Student</h3>
+              <button
+                onClick={() => setShowConfirmAddModal(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to add student with ID {newStudentId} to this class?
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowConfirmAddModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddStudent}
+                disabled={isSubmitting}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? 'Adding...' : 'Confirm Add'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Delete Student Modal */}
+      {showConfirmDeleteModal && studentToDelete && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Confirm Delete Student</h3>
+              <button
+                onClick={() => {
+                  setShowConfirmDeleteModal(false);
+                  setStudentToDelete(null);
+                }}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to remove {studentToDelete.firstName} {studentToDelete.lastName} from this class?
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowConfirmDeleteModal(false);
+                  setStudentToDelete(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteStudent}
+                disabled={loadingStudents}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingStudents ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>
