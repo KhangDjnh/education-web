@@ -4,6 +4,8 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router";
+import { PlusIcon } from '@heroicons/react/24/outline';
+import { CreateClassForm } from '../components/class/CreateClassForm';
 
 interface ClassData {
   id: number;
@@ -28,6 +30,7 @@ export default function TeacherPage() {
   const [authChecked, setAuthChecked] = useState<boolean>(false);
   const { isLoggedIn, getToken, roles, user, validateSession, isInitialized } = useAuth();
   const navigate = useNavigate();
+  const [showCreateForm, setShowCreateForm] = useState(false);
   
   // Check authentication status when component mounts or auth state changes
   useEffect(() => {
@@ -128,6 +131,12 @@ export default function TeacherPage() {
     role: "TEACHER"
   } : undefined;
 
+  const handleCreateSuccess = () => {
+    // Refresh the class list
+    fetchClasses();
+    setShowCreateForm(false);
+  };
+
   // Show loading state when initializing
   if (!authChecked || (loading && classes.length === 0)) {
     return (
@@ -152,6 +161,22 @@ export default function TeacherPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800">My Classes</h1>
           <p className="text-gray-600 mt-2">Manage all your teaching classes</p>
+        </div>
+
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Teacher Dashboard</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Manage your classes and teaching activities
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Create New Class
+          </button>
         </div>
 
         {error ? (
@@ -182,6 +207,13 @@ export default function TeacherPage() {
               />
             ))}
           </div>
+        )}
+
+        {showCreateForm && (
+          <CreateClassForm
+            onClose={() => setShowCreateForm(false)}
+            onSuccess={handleCreateSuccess}
+          />
         )}
       </main>
       

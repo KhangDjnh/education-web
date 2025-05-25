@@ -44,6 +44,13 @@ interface Score {
   examId: number;
 }
 
+interface CreateClassData {
+  name: string;
+  semester: string;
+  code: string;
+  description: string;
+}
+
 export const classService = {
   // Class data
   getClassData: async (classId: string | undefined | null, token: string): Promise<ClassData> => {
@@ -638,5 +645,19 @@ export const classService = {
       throw new Error("Failed to export scores");
     }
     return response.blob();
+  },
+
+  createClass: async (classData: CreateClassData, token: string): Promise<ClassData> => {
+    const response = await fetch(`${API_BASE_URL}/classes`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(classData),
+    });
+    const data: ApiResponse<ClassData> = await response.json();
+    if (data.code === 1000) return data.result;
+    throw new Error(data.message || 'Failed to create class');
   },
 };
