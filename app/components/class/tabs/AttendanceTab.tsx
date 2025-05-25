@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CalendarIcon, CheckCircleIcon, XCircleIcon, ClockIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { CalendarIcon, CheckCircleIcon, XCircleIcon, ClockIcon, PlusIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../contexts/AuthContext';
 import { classService } from '../../../services/classService';
 import type { StudentAttendance, AttendanceHistory, AttendanceStatus, AttendanceRecord } from '../../../types/class';
@@ -15,23 +15,16 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ classId }) => {
   const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [showHistory, setShowHistory] = useState<boolean>(false);
+  const [isCreatingAttendance, setIsCreatingAttendance] = useState<boolean>(false);
+  const [isViewingHistory, setIsViewingHistory] = useState<boolean>(false);
   const { getToken } = useAuth();
-
-  const isToday = selectedDate === new Date().toISOString().split('T')[0];
 
   useEffect(() => {
     fetchStudentAttendance();
   }, [classId]);
 
   useEffect(() => {
-    if (showHistory) {
-      fetchAttendanceHistory();
-    }
-  }, [selectedDate, showHistory]);
-
-  useEffect(() => {
-    if (isToday && studentAttendance.length > 0) {
+    if (studentAttendance.length > 0 && isCreatingAttendance) {
       // Initialize today's attendance records
       const initialAttendance: AttendanceRecord[] = studentAttendance.map(student => ({
         studentId: student.userResponse.id,
@@ -39,7 +32,13 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ classId }) => {
       }));
       setTodayAttendance(initialAttendance);
     }
-  }, [studentAttendance, isToday]);
+  }, [studentAttendance, isCreatingAttendance]);
+
+  useEffect(() => {
+    if (isViewingHistory) {
+      fetchAttendanceHistory();
+    }
+  }, [selectedDate, isViewingHistory]);
 
   const fetchStudentAttendance = async () => {
     try {
@@ -108,11 +107,9 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ classId }) => {
       }
 
       await classService.submitAttendance(classId, selectedDate, todayAttendance, token);
-      // Refresh attendance data after successful submission
+      // Reset to summary view and refresh data
+      setIsCreatingAttendance(false);
       await fetchStudentAttendance();
-      if (showHistory) {
-        await fetchAttendanceHistory();
-      }
     } catch (err) {
       console.error('Error submitting attendance:', err);
       setError(
@@ -166,73 +163,41 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ classId }) => {
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-bold text-gray-800">Attendance Management</h3>
         <div className="flex items-center space-x-4">
-          <div className="relative">
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-            />
-            <CalendarIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-          </div>
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center"
-          >
-            <EyeIcon className="h-5 w-5 mr-2" />
-            {showHistory ? 'Hide History' : 'View History'}
-          </button>
-          {isToday && (
-            <button
-              onClick={handleSubmitAttendance}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-            >
-              Submit Attendance
-            </button>
+          {!isCreatingAttendance && !isViewingHistory && (
+            <>
+              <button
+                onClick={() => setIsCreatingAttendance(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center"
+              >
+                <PlusIcon className="h-5 w-5 mr-2" />
+                Create Attendance
+              </button>
+              <button
+                onClick={() => setIsViewingHistory(true)}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center"
+              >
+                <EyeIcon className="h-5 w-5 mr-2" />
+                View History
+              </button>
+            </>
           )}
         </div>
       </div>
 
-      {showHistory ? (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Student Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {attendanceHistory.map((record) => (
-                <tr key={record.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {record.studentName}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {getStatusIcon(record.status)}
-                      <span className="ml-2 text-sm text-gray-900">
-                        {record.status.charAt(0) + record.status.slice(1).toLowerCase()}
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
+      {isCreatingAttendance ? (
         <div className="space-y-6">
-          {/* Attendance Summary */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h4 className="text-lg font-medium text-gray-900">Attendance Summary</h4>
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h4 className="text-lg font-medium text-gray-900">Mark Attendance</h4>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                />
+                <CalendarIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              </div>
             </div>
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -241,148 +206,212 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ classId }) => {
                     Student Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Present
+                    Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Late
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Absent
+                    Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {studentAttendance.map((attendance) => (
-                  <tr key={attendance.userResponse.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-800 font-medium text-sm">
-                            {attendance.userResponse.firstName[0]}
-                            {attendance.userResponse.lastName[0]}
+                {studentAttendance.map((attendance) => {
+                  const record = todayAttendance.find(
+                    (r) => r.studentId === attendance.userResponse.id
+                  );
+                  const status = record?.status || 'PRESENT';
+
+                  return (
+                    <tr key={attendance.userResponse.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-blue-800 font-medium text-sm">
+                              {attendance.userResponse.firstName[0]}
+                              {attendance.userResponse.lastName[0]}
+                            </span>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {attendance.userResponse.firstName} {attendance.userResponse.lastName}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {attendance.userResponse.email}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {getStatusIcon(status)}
+                          <span className="ml-2 text-sm text-gray-900">
+                            {status.charAt(0) + status.slice(1).toLowerCase()}
                           </span>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {attendance.userResponse.firstName} {attendance.userResponse.lastName}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {attendance.userResponse.email}
-                          </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleStatusChange(attendance.userResponse.id, 'PRESENT')}
+                            className={`px-3 py-1 rounded ${
+                              status === 'PRESENT'
+                                ? 'bg-green-100 text-green-800'
+                                : 'text-green-600 hover:bg-green-50'
+                            }`}
+                          >
+                            Present
+                          </button>
+                          <button
+                            onClick={() => handleStatusChange(attendance.userResponse.id, 'ABSENT')}
+                            className={`px-3 py-1 rounded ${
+                              status === 'ABSENT'
+                                ? 'bg-red-100 text-red-800'
+                                : 'text-red-600 hover:bg-red-50'
+                            }`}
+                          >
+                            Absent
+                          </button>
+                          <button
+                            onClick={() => handleStatusChange(attendance.userResponse.id, 'LATE')}
+                            className={`px-3 py-1 rounded ${
+                              status === 'LATE'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'text-yellow-600 hover:bg-yellow-50'
+                            }`}
+                          >
+                            Late
+                          </button>
                         </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-end space-x-4">
+            <button
+              onClick={() => setIsCreatingAttendance(false)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmitAttendance}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
+            >
+              Submit Attendance
+            </button>
+          </div>
+        </div>
+      ) : isViewingHistory ? (
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h4 className="text-lg font-medium text-gray-900">Attendance History</h4>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                />
+                <CalendarIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              </div>
+            </div>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Student Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {attendanceHistory.map((record) => (
+                  <tr key={record.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {record.studentName}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{attendance.presentNumber}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{attendance.lateNumber}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{attendance.absenceNumber}</div>
+                      <div className="flex items-center">
+                        {getStatusIcon(record.status)}
+                        <span className="ml-2 text-sm text-gray-900">
+                          {record.status.charAt(0) + record.status.slice(1).toLowerCase()}
+                        </span>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-
-          {/* Today's Attendance */}
-          {isToday && (
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h4 className="text-lg font-medium text-gray-900">Today's Attendance</h4>
-              </div>
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Student Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {studentAttendance.map((attendance) => {
-                    const record = todayAttendance.find(
-                      (r) => r.studentId === attendance.userResponse.id
-                    );
-                    const status = record?.status || 'PRESENT';
-
-                    return (
-                      <tr key={attendance.userResponse.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="h-10 w-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
-                              <span className="text-blue-800 font-medium text-sm">
-                                {attendance.userResponse.firstName[0]}
-                                {attendance.userResponse.lastName[0]}
-                              </span>
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {attendance.userResponse.firstName} {attendance.userResponse.lastName}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {attendance.userResponse.email}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            {getStatusIcon(status)}
-                            <span className="ml-2 text-sm text-gray-900">
-                              {status.charAt(0) + status.slice(1).toLowerCase()}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => handleStatusChange(attendance.userResponse.id, 'PRESENT')}
-                              className={`px-3 py-1 rounded ${
-                                status === 'PRESENT'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'text-green-600 hover:bg-green-50'
-                              }`}
-                            >
-                              Present
-                            </button>
-                            <button
-                              onClick={() => handleStatusChange(attendance.userResponse.id, 'ABSENT')}
-                              className={`px-3 py-1 rounded ${
-                                status === 'ABSENT'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'text-red-600 hover:bg-red-50'
-                              }`}
-                            >
-                              Absent
-                            </button>
-                            <button
-                              onClick={() => handleStatusChange(attendance.userResponse.id, 'LATE')}
-                              className={`px-3 py-1 rounded ${
-                                status === 'LATE'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'text-yellow-600 hover:bg-yellow-50'
-                              }`}
-                            >
-                              Late
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <div className="flex justify-end">
+            <button
+              onClick={() => setIsViewingHistory(false)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Back to Summary
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Student Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Present
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Late
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Absent
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {studentAttendance.map((attendance) => (
+                <tr key={attendance.userResponse.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="h-10 w-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-800 font-medium text-sm">
+                          {attendance.userResponse.firstName[0]}
+                          {attendance.userResponse.lastName[0]}
+                        </span>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {attendance.userResponse.firstName} {attendance.userResponse.lastName}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {attendance.userResponse.email}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{attendance.presentNumber}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{attendance.lateNumber}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{attendance.absenceNumber}</div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </>
