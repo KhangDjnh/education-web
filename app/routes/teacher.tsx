@@ -4,7 +4,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router";
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import { CreateClassForm } from '../components/class/CreateClassForm';
 
 interface ClassData {
@@ -25,13 +25,47 @@ interface ApiResponse {
 
 export default function TeacherPage() {
   const [classes, setClasses] = useState<ClassData[]>([]);
+  const [filteredClasses, setFilteredClasses] = useState<ClassData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState<boolean>(false);
+  const [selectedSemester, setSelectedSemester] = useState<string>('all');
   const { isLoggedIn, getToken, roles, user, validateSession, isInitialized } = useAuth();
   const navigate = useNavigate();
   const [showCreateForm, setShowCreateForm] = useState(false);
   
+  // Generate semester options
+  const generateSemesterOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const options = [];
+    
+    // Add "All" option
+    options.push({ value: 'all', label: 'All Semesters' });
+    
+    // Generate options for current year and next year
+    for (let year = currentYear; year <= currentYear + 1; year++) {
+      for (let semester = 1; semester <= 3; semester++) {
+        options.push({
+          value: `${year}${semester}`,
+          label: `Semester ${semester} - ${year}`
+        });
+      }
+    }
+    
+    return options;
+  };
+
+  const semesterOptions = generateSemesterOptions();
+
+  // Filter classes when semester selection changes
+  useEffect(() => {
+    if (selectedSemester === 'all') {
+      setFilteredClasses(classes);
+    } else {
+      setFilteredClasses(classes.filter(c => c.semester === selectedSemester));
+    }
+  }, [selectedSemester, classes]);
+
   // Check authentication status when component mounts or auth state changes
   useEffect(() => {
     const checkAuth = async () => {
@@ -113,6 +147,7 @@ export default function TeacherPage() {
       if (data.code === 1000) {
         console.log("Classes fetched successfully:", data.result.length);
         setClasses(data.result);
+        setFilteredClasses(data.result);
       } else {
         throw new Error(data.message || "Failed to fetch classes");
       }
@@ -170,13 +205,29 @@ export default function TeacherPage() {
               Manage your classes and teaching activities
             </p>
           </div>
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Create New Class
-          </button>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <FunnelIcon className="h-5 w-5 text-gray-500" />
+              <select
+                value={selectedSemester}
+                onChange={(e) => setSelectedSemester(e.target.value)}
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              >
+                {semesterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <PlusIcon className="h-5 w-5 mr-2" />
+              Create New Class
+            </button>
+          </div>
         </div>
 
         {error ? (
@@ -184,17 +235,25 @@ export default function TeacherPage() {
             <strong className="font-bold">Error! </strong>
             <span className="block sm:inline">{error}</span>
           </div>
-        ) : classes.length === 0 ? (
+        ) : filteredClasses.length === 0 ? (
           <div className="text-center py-12">
             <h3 className="text-xl font-medium text-gray-700">No classes found</h3>
-            <p className="mt-2 text-gray-500">You don't have any classes yet.</p>
-            <button className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+            <p className="mt-2 text-gray-500">
+              {selectedSemester === 'all' 
+                ? "You don't have any classes yet."
+                : `No classes found for ${semesterOptions.find(opt => opt.value === selectedSemester)?.label}`
+              }
+            </p>
+            <button 
+              onClick={() => setShowCreateForm(true)}
+              className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
+            >
               Create a Class
             </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {classes.map((classItem) => (
+            {filteredClasses.map((classItem) => (
               <ClassCard
                 key={classItem.id}
                 id={classItem.id}
