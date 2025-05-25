@@ -42,7 +42,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({ classId }) => {
     }
   };
 
-  const handleDelete = async (examId: string) => {
+  const handleDelete = async (examId: number) => {
     try {
       setLoading(true);
       setError(null);

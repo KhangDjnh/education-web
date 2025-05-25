@@ -49,14 +49,26 @@ export interface AbsenceRequest {
 
 export interface Question {
   id: number;
+  classId: number;
+  chapter: number;
+  question: string;
+  optionA?: string;
+  optionB?: string;
+  optionC?: string;
+  optionD?: string;
+  answer: string;
+  level: "EASY" | "MEDIUM" | "HARD" | "VERY_HARD";
+}
+
+export interface QuestionFormData {
+  classId: string;
   question: string;
   optionA: string;
   optionB: string;
   optionC: string;
   optionD: string;
   answer: string;
-  chapter: number;
-  level: string;
+  level: "EASY" | "MEDIUM" | "HARD" | "VERY_HARD";
 }
 
 export interface Exam {

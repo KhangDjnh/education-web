@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { QuestionMarkCircleIcon, PlusIcon, PencilSquareIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { QuestionMarkCircleIcon, PlusIcon, PencilSquareIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../contexts/AuthContext';
 import { classService } from '../../../services/classService';
-import type { Question } from '../../../types/class';
+import type { Question, QuestionFormData } from '../../../types/class';
+import QuestionCard from '../../../components/QuestionCard';
 
 interface QuestionsTabProps {
   classId: string;
@@ -15,7 +16,23 @@ export const QuestionsTab: React.FC<QuestionsTabProps> = ({ classId }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
+  const [showForm, setShowForm] = useState<boolean>(false);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [checkedQuestions, setCheckedQuestions] = useState<Set<number>>(new Set());
+  const [showExamForm, setShowExamForm] = useState<boolean>(false);
+  const [examFormData, setExamFormData] = useState({
+    title: '',
+    description: '',
+    startTime: '',
+    endTime: '',
+    numberOfEasyQuestions: '0',
+    numberOfMediumQuestions: '0',
+    numberOfHardQuestions: '0',
+    numberOfVeryHardQuestions: '0',
+  });
   const { getToken } = useAuth();
+  const [showSuccess, setShowSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     fetchQuestions();
@@ -40,6 +57,39 @@ export const QuestionsTab: React.FC<QuestionsTabProps> = ({ classId }) => {
         err instanceof Error
           ? err.message
           : 'An error occurred while fetching questions'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchQuestionDetails = async (questionId: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = getToken();
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const response = await fetch(`http://localhost:8080/education/api/questions/${questionId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (data.code === 1000) {
+        setSelectedQuestion(data.result);
+      } else {
+        throw new Error(data.message || 'Failed to fetch question details');
+      }
+    } catch (err) {
+      console.error('Error fetching question details:', err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'An error occurred while fetching question details'
       );
     } finally {
       setLoading(false);
@@ -79,7 +129,11 @@ export const QuestionsTab: React.FC<QuestionsTabProps> = ({ classId }) => {
     }
   };
 
-  const handleDelete = async (questionId: string) => {
+  const handleDelete = async (questionId: number) => {
+    if (!window.confirm('Are you sure you want to delete this question?')) {
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -89,8 +143,16 @@ export const QuestionsTab: React.FC<QuestionsTabProps> = ({ classId }) => {
         throw new Error('Authentication token not found');
       }
 
-      // Implement delete logic here
-      console.log('Deleting question:', questionId);
+      const response = await fetch(`http://localhost:8080/education/api/questions/${questionId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (data.code !== 1000) {
+        throw new Error(data.message || 'Failed to delete question');
+      }
       await fetchQuestions();
     } catch (err) {
       console.error('Error deleting question:', err);
@@ -104,21 +166,191 @@ export const QuestionsTab: React.FC<QuestionsTabProps> = ({ classId }) => {
     }
   };
 
-  const getLevelBadge = (level: string) => {
-    const colors = {
-      EASY: 'bg-green-100 text-green-800',
-      MEDIUM: 'bg-yellow-100 text-yellow-800',
-      HARD: 'bg-red-100 text-red-800',
-    };
-    return (
-      <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          colors[level as keyof typeof colors]
-        }`}
-      >
-        {level}
-      </span>
-    );
+  const handleEdit = (question: Question) => {
+    setEditingQuestion(question);
+    setShowForm(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!window.confirm('Are you sure you want to update this question?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = getToken();
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const response = await fetch(`http://localhost:8080/education/api/questions/${editingQuestion?.id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          classId,
+          question: editingQuestion?.question,
+          optionA: editingQuestion?.optionA,
+          optionB: editingQuestion?.optionB,
+          optionC: editingQuestion?.optionC,
+          optionD: editingQuestion?.optionD,
+          answer: editingQuestion?.answer,
+          level: editingQuestion?.level,
+        }),
+      });
+      const data = await response.json();
+      if (data.code !== 1000) {
+        throw new Error(data.message || 'Failed to update question');
+      }
+      setShowForm(false);
+      setEditingQuestion(null);
+      await fetchQuestions();
+    } catch (err) {
+      console.error('Error updating question:', err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'An error occurred while updating question'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateExam = async () => {
+    if (!window.confirm('Are you sure you want to create an exam with the selected questions?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = getToken();
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const response = await fetch('http://localhost:8080/education/api/exams/choose', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          classId,
+          title: examFormData.title,
+          description: examFormData.description,
+          questionIds: Array.from(checkedQuestions),
+          startTime: examFormData.startTime,
+          endTime: examFormData.endTime,
+        }),
+      });
+      const data = await response.json();
+      if (data.code !== 1000) {
+        throw new Error(data.message || 'Failed to create exam');
+      }
+      setShowExamForm(false);
+      setCheckedQuestions(new Set());
+      setExamFormData({
+        title: '',
+        description: '',
+        startTime: '',
+        endTime: '',
+        numberOfEasyQuestions: '0',
+        numberOfMediumQuestions: '0',
+        numberOfHardQuestions: '0',
+        numberOfVeryHardQuestions: '0',
+      });
+      setShowSuccess('Exam created successfully!');
+      setTimeout(() => setShowSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error creating exam:', err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'An error occurred while creating exam'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateRandomExam = async () => {
+    if (!window.confirm('Are you sure you want to create a random exam?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = getToken();
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const response = await fetch('http://localhost:8080/education/api/exams/random', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          classId,
+          title: examFormData.title,
+          description: examFormData.description,
+          numberOfEasyQuestions: examFormData.numberOfEasyQuestions,
+          numberOfMediumQuestions: examFormData.numberOfMediumQuestions,
+          numberOfHardQuestions: examFormData.numberOfHardQuestions,
+          numberOfVeryHardQuestions: examFormData.numberOfVeryHardQuestions,
+          startTime: examFormData.startTime,
+          endTime: examFormData.endTime,
+        }),
+      });
+      const data = await response.json();
+      if (data.code !== 1000) {
+        throw new Error(data.message || 'Failed to create random exam');
+      }
+      setShowExamForm(false);
+      setExamFormData({
+        title: '',
+        description: '',
+        startTime: '',
+        endTime: '',
+        numberOfEasyQuestions: '0',
+        numberOfMediumQuestions: '0',
+        numberOfHardQuestions: '0',
+        numberOfVeryHardQuestions: '0',
+      });
+      setShowSuccess('Random exam created successfully!');
+      setTimeout(() => setShowSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error creating random exam:', err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'An error occurred while creating random exam'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckQuestion = (questionId: number, checked: boolean) => {
+    const newCheckedQuestions = new Set(checkedQuestions);
+    if (checked) {
+      newCheckedQuestions.add(questionId);
+    } else {
+      newCheckedQuestions.delete(questionId);
+    }
+    setCheckedQuestions(newCheckedQuestions);
   };
 
   if (loading) {
@@ -146,6 +378,12 @@ export const QuestionsTab: React.FC<QuestionsTabProps> = ({ classId }) => {
 
   return (
     <>
+      {showSuccess && (
+        <div className="fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center space-x-2">
+          <CheckCircleIcon className="h-5 w-5 text-green-500" />
+          <span>{showSuccess}</span>
+        </div>
+      )}
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-bold text-gray-800">Question Bank</h3>
         <div className="flex space-x-2">
@@ -165,7 +403,10 @@ export const QuestionsTab: React.FC<QuestionsTabProps> = ({ classId }) => {
           >
             Search
           </button>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center">
+          <button 
+            onClick={() => setShowForm(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center"
+          >
             <PlusIcon className="h-5 w-5 mr-2" />
             Add Question
           </button>
@@ -182,7 +423,10 @@ export const QuestionsTab: React.FC<QuestionsTabProps> = ({ classId }) => {
             Get started by adding questions to your question bank.
           </p>
           <div className="mt-6">
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center mx-auto">
+            <button 
+              onClick={() => setShowForm(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center mx-auto"
+            >
               <PlusIcon className="h-5 w-5 mr-2" />
               Add First Question
             </button>
@@ -191,65 +435,14 @@ export const QuestionsTab: React.FC<QuestionsTabProps> = ({ classId }) => {
       ) : (
         <div className="space-y-4">
           {questions.map((question) => (
-            <div
+            <QuestionCard
               key={question.id}
-              className="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-lg font-medium text-gray-900">
-                      {question.question}
-                    </h4>
-                    <div className="flex items-center space-x-2">
-                      {getLevelBadge(question.level)}
-                      <span className="text-sm text-gray-500">
-                        Chapter {question.chapter}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm">
-                      <span className="font-medium text-gray-700 mr-2">A:</span>
-                      <span className="text-gray-600">{question.optionA}</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <span className="font-medium text-gray-700 mr-2">B:</span>
-                      <span className="text-gray-600">{question.optionB}</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <span className="font-medium text-gray-700 mr-2">C:</span>
-                      <span className="text-gray-600">{question.optionC}</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <span className="font-medium text-gray-700 mr-2">D:</span>
-                      <span className="text-gray-600">{question.optionD}</span>
-                    </div>
-                    <div className="flex items-center text-sm mt-2">
-                      <span className="font-medium text-green-700 mr-2">
-                        Answer:
-                      </span>
-                      <span className="text-green-600">{question.answer}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex space-x-2 ml-4">
-                  <button
-                    className="text-blue-600 hover:text-blue-900"
-                    title="Edit"
-                  >
-                    <PencilSquareIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(question.id)}
-                    className="text-red-600 hover:text-red-900"
-                    title="Delete"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-            </div>
+              question={question}
+              checked={checkedQuestions.has(question.id)}
+              onCheck={(checked) => handleCheckQuestion(question.id, checked)}
+              onClick={() => fetchQuestionDetails(question.id)}
+              selected={selectedQuestion?.id === question.id}
+            />
           ))}
 
           {totalPages > 1 && (
@@ -277,6 +470,229 @@ export const QuestionsTab: React.FC<QuestionsTabProps> = ({ classId }) => {
               </nav>
             </div>
           )}
+
+          <div className="mt-8 flex justify-center space-x-4">
+            <button
+              onClick={() => setShowExamForm(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-sm font-medium"
+            >
+              Create Exam
+            </button>
+            <button
+              onClick={() => setShowExamForm(true)}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg text-sm font-medium"
+            >
+              Create Random Exam
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showForm && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                {editingQuestion ? 'Edit Question' : 'Add Question'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingQuestion(null);
+                }}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Question</label>
+                <textarea
+                  value={editingQuestion?.question || ''}
+                  onChange={(e) => setEditingQuestion(prev => prev ? {...prev, question: e.target.value} : null)}
+                  required
+                  rows={3}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Option A</label>
+                <input
+                  type="text"
+                  value={editingQuestion?.optionA || ''}
+                  onChange={(e) => setEditingQuestion(prev => prev ? {...prev, optionA: e.target.value} : null)}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Option B</label>
+                <input
+                  type="text"
+                  value={editingQuestion?.optionB || ''}
+                  onChange={(e) => setEditingQuestion(prev => prev ? {...prev, optionB: e.target.value} : null)}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Option C</label>
+                <input
+                  type="text"
+                  value={editingQuestion?.optionC || ''}
+                  onChange={(e) => setEditingQuestion(prev => prev ? {...prev, optionC: e.target.value} : null)}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Option D</label>
+                <input
+                  type="text"
+                  value={editingQuestion?.optionD || ''}
+                  onChange={(e) => setEditingQuestion(prev => prev ? {...prev, optionD: e.target.value} : null)}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Answer</label>
+                <select
+                  value={editingQuestion?.answer || ''}
+                  onChange={(e) => setEditingQuestion(prev => prev ? {...prev, answer: e.target.value} : null)}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
+                  <option value="">Select answer</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Level</label>
+                <select
+                  value={editingQuestion?.level || ''}
+                  onChange={(e) => setEditingQuestion(prev => prev ? {...prev, level: e.target.value as Question['level']} : null)}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
+                  <option value="">Select level</option>
+                  <option value="EASY">Easy</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HARD">Hard</option>
+                  <option value="VERY_HARD">Very Hard</option>
+                </select>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingQuestion(null);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+                >
+                  {editingQuestion ? 'Update' : 'Create'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showExamForm && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                Create Exam
+              </h3>
+              <button
+                onClick={() => {
+                  setShowExamForm(false);
+                }}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <form className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Title</label>
+                <input
+                  type="text"
+                  value={examFormData.title}
+                  onChange={(e) => setExamFormData(prev => ({...prev, title: e.target.value}))}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <textarea
+                  value={examFormData.description}
+                  onChange={(e) => setExamFormData(prev => ({...prev, description: e.target.value}))}
+                  required
+                  rows={3}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Start Time</label>
+                <input
+                  type="datetime-local"
+                  value={examFormData.startTime}
+                  onChange={(e) => setExamFormData(prev => ({...prev, startTime: e.target.value}))}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">End Time</label>
+                <input
+                  type="datetime-local"
+                  value={examFormData.endTime}
+                  onChange={(e) => setExamFormData(prev => ({...prev, endTime: e.target.value}))}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExamForm(false);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateExam}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+                >
+                  Create Exam
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateRandomExam}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
+                >
+                  Create Random Exam
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </>
