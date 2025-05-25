@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 
 interface ClassCardProps {
   id: number;
@@ -28,8 +28,18 @@ const ClassCard: React.FC<ClassCardProps> = ({
   });
 
   // Ensure id is a number and convert to string for the URL
+  console.log("ClassCard - Original id:", id);
+  console.log("ClassCard - id type:", typeof id);
+  
+  if (!id || typeof id !== 'number') {
+    console.error("Invalid id provided to ClassCard:", id);
+    return null;
+  }
+
   const classId = id.toString();
+  console.log("ClassCard - Converted classId:", classId);
   const classUrl = role === "STUDENT" ? `/student/class/${classId}` : `/class/${classId}`;
+  console.log("ClassCard - Generated URL:", classUrl);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-300">

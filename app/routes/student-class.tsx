@@ -12,6 +12,9 @@ import {
   Squares2X2Icon,
   XMarkIcon,
   ArrowTopRightOnSquareIcon,
+  UserGroupIcon,
+  CalendarIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -36,9 +39,12 @@ interface DocumentItem {
 }
 
 export default function StudentClassPage() {
-  const { id } = useParams();
+  const { classId } = useParams<{ classId: string }>();
   const navigate = useNavigate();
   const { isLoggedIn, getToken, user } = useAuth();
+
+  console.log("StudentClassPage - classId from params:", classId);
+  console.log("StudentClassPage - classId type:", typeof classId);
 
   const [classDetail, setClassDetail] = useState<ClassDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,32 +55,56 @@ export default function StudentClassPage() {
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [documentsError, setDocumentsError] = useState<string | null>(null);
 
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [classCode, setClassCode] = useState("");
+  const [joiningClass, setJoiningClass] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [joinSuccess, setJoinSuccess] = useState(false);
+
+  // Validate class ID
+  useEffect(() => {
+    console.log("Validating class ID:", classId);
+    if (!classId || classId === 'undefined' || classId === 'null') {
+      console.log("Invalid class ID detected");
+      setError("Invalid class ID. Please make sure you're accessing the correct URL.");
+      setLoading(false);
+      return;
+    }
+  }, [classId]);
+
   useEffect(() => {
     const fetchClassDetail = async () => {
+      if (!classId || classId === 'undefined' || classId === 'null') {
+        console.log("Skipping fetchClassDetail due to invalid ID");
+        return;
+      }
+
+      console.log("Fetching class detail for ID:", classId);
       setLoading(true);
       setError(null);
       try {
         const token = getToken();
         if (!token) throw new Error("Authentication token not found");
-        const res = await fetch(`http://localhost:8080/education/api/classes/${id}`, {
+        const res = await fetch(`http://localhost:8080/education/api/classes/${classId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("Failed to fetch class detail");
         const data = await res.json();
+        console.log("Class detail response:", data);
         if (data.code === 1000) {
           setClassDetail(data.result);
         } else {
           throw new Error(data.message || "Failed to fetch class detail");
         }
       } catch (err) {
+        console.error("Error fetching class detail:", err);
         setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
         setLoading(false);
       }
     };
     fetchClassDetail();
-    // eslint-disable-next-line
-  }, [id]);
+  }, [classId, getToken]);
 
   const handleOpenDocuments = async () => {
     setShowDocumentsModal(true);
@@ -96,6 +126,47 @@ export default function StudentClassPage() {
       setDocumentsError("Không thể tải tài liệu.");
     } finally {
       setLoadingDocuments(false);
+    }
+  };
+
+  const handleJoinClass = async () => {
+    if (!classCode.trim()) {
+      setJoinError("Vui lòng nhập mã lớp học");
+      return;
+    }
+
+    setJoiningClass(true);
+    setJoinError(null);
+    setJoinSuccess(false);
+
+    try {
+      const token = getToken();
+      if (!token) throw new Error("Authentication token not found");
+
+      const res = await fetch("http://localhost:8080/education/api/class-students/class-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ code: classCode.trim() }),
+      });
+
+      const data = await res.json();
+      if (data.code === 1000) {
+        setJoinSuccess(true);
+        setClassCode("");
+        // Refresh the page after 2 seconds to show the new class
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        throw new Error(data.message || "Failed to join class");
+      }
+    } catch (err) {
+      setJoinError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setJoiningClass(false);
     }
   };
 
@@ -149,6 +220,68 @@ export default function StudentClassPage() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar isLoggedIn={isLoggedIn} user={navbarUser} />
       <main className="flex-grow container mx-auto px-4 py-8">
+        {/* Join Class Modal */}
+        {showJoinModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-900">Tham gia lớp học</h3>
+                <button
+                  onClick={() => setShowJoinModal(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="mb-4">
+                <label htmlFor="classCode" className="block text-sm font-medium text-gray-700 mb-1">
+                  Mã lớp học
+                </label>
+                <input
+                  type="text"
+                  id="classCode"
+                  value={classCode}
+                  onChange={(e) => setClassCode(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Nhập mã lớp học"
+                />
+              </div>
+              {joinError && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                  {joinError}
+                </div>
+              )}
+              {joinSuccess && (
+                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+                  Tham gia lớp học thành công! Đang chuyển hướng...
+                </div>
+              )}
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowJoinModal(false)}
+                  className="px-4 py-2 text-gray-700 hover:text-gray-900"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleJoinClass}
+                  disabled={joiningClass}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {joiningClass ? (
+                    <>
+                      <div className="inline-block animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    "Tham gia"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Nếu đang xem tài liệu thì chỉ ẩn các chức năng, vẫn hiển thị info lớp và tài liệu */}
         {showDocumentsModal ? (
           <>
@@ -305,7 +438,7 @@ export default function StudentClassPage() {
             </div>
             {/* Class Features */}
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Class Features</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="bg-blue-500 rounded-xl shadow p-5 flex flex-col">
                 <div className="flex items-center mb-2">
                   <BookOpenIcon className="h-7 w-7 text-white mr-2" />
@@ -356,6 +489,32 @@ export default function StudentClassPage() {
                   onClick={() => alert("Tính năng xem điểm sẽ sớm có!")}
                 >
                   View Grades →
+                </button>
+              </div>
+              <div className="bg-yellow-500 rounded-xl shadow p-5 flex flex-col">
+                <div className="flex items-center mb-2">
+                  <CalendarIcon className="h-7 w-7 text-white mr-2" />
+                  <span className="text-lg font-bold text-white">Điểm danh</span>
+                </div>
+                <div className="text-white text-sm mb-3">Xem lịch sử điểm danh và xin nghỉ phép.</div>
+                <button
+                  className="text-white underline text-sm mt-auto hover:text-yellow-200"
+                  onClick={() => alert("Tính năng điểm danh sẽ sớm có!")}
+                >
+                  View Attendance →
+                </button>
+              </div>
+              <div className="bg-indigo-500 rounded-xl shadow p-5 flex flex-col">
+                <div className="flex items-center mb-2">
+                  <UserGroupIcon className="h-7 w-7 text-white mr-2" />
+                  <span className="text-lg font-bold text-white">Tham gia lớp</span>
+                </div>
+                <div className="text-white text-sm mb-3">Tham gia lớp học mới bằng mã lớp.</div>
+                <button
+                  className="text-white underline text-sm mt-auto hover:text-indigo-200"
+                  onClick={() => setShowJoinModal(true)}
+                >
+                  Join Class →
                 </button>
               </div>
             </div>
