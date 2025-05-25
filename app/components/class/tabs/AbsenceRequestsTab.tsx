@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ClockIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, CheckCircleIcon, XCircleIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../contexts/AuthContext';
 import { classService } from '../../../services/classService';
 import type { AbsenceRequest } from '../../../types/class';
@@ -12,6 +12,7 @@ export const AbsenceRequestsTab: React.FC<AbsenceRequestsTabProps> = ({ classId 
   const [requests, setRequests] = useState<AbsenceRequest[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
   const { getToken } = useAuth();
 
   useEffect(() => {
@@ -103,6 +104,10 @@ export const AbsenceRequestsTab: React.FC<AbsenceRequestsTabProps> = ({ classId 
     }
   };
 
+  const toggleExpand = (requestId: string) => {
+    setExpandedRequestId(expandedRequestId === requestId ? null : requestId);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -143,85 +148,76 @@ export const AbsenceRequestsTab: React.FC<AbsenceRequestsTabProps> = ({ classId 
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Student
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Leave Date
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Reason
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Status
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {requests.map((request) => (
-                <tr key={request.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {request.studentName}
+        <div className="space-y-4">
+          {requests.map((request) => (
+            <div
+              key={request.id}
+              className="bg-white rounded-lg shadow overflow-hidden border border-gray-200"
+            >
+              <div
+                className="p-4 cursor-pointer hover:bg-gray-50"
+                onClick={() => toggleExpand(request.id.toString())}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex-shrink-0">
+                      <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <span className="text-blue-800 font-medium text-sm">
+                          {request.studentName.split(' ').map(n => n[0]).join('')}
+                        </span>
+                      </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {formatDate(request.leaveDate)}
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-900">
+                        {request.studentName}
+                      </h4>
+                      <p className="text-sm text-gray-500">
+                        Leave Date: {formatDate(request.leaveDate)}
+                      </p>
                     </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 max-w-xs truncate">
-                      {request.reason}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  </div>
+                  <div className="flex items-center space-x-4">
                     {getStatusBadge(request.status)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {expandedRequestId === request.id.toString() ? (
+                      <ChevronUpIcon className="h-5 w-5 text-gray-400" />
+                    ) : (
+                      <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {expandedRequestId === request.id.toString() && (
+                <div className="px-4 pb-4 border-t border-gray-200">
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-700">Reason for Absence</h5>
+                      <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
+                        {request.reason}
+                      </p>
+                    </div>
+                    
                     {request.status === 'PENDING' && (
-                      <div className="flex space-x-2">
+                      <div className="flex justify-end space-x-2 pt-4 border-t border-gray-200">
                         <button
-                          onClick={() => handleRequestAction(request.id, 'APPROVED')}
-                          className="text-green-600 hover:text-green-900"
+                          onClick={() => handleRequestAction(request.id.toString(), 'APPROVED')}
+                          className="px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 text-sm font-medium"
                         >
                           Approve
                         </button>
                         <button
-                          onClick={() => handleRequestAction(request.id, 'REJECTED')}
-                          className="text-red-600 hover:text-red-900"
+                          onClick={() => handleRequestAction(request.id.toString(), 'REJECTED')}
+                          className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-sm font-medium"
                         >
                           Reject
                         </button>
                       </div>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </>
