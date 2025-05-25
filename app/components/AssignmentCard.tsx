@@ -9,35 +9,15 @@ import {
   TrashIcon,
   PencilSquareIcon,
 } from "@heroicons/react/24/outline";
-
-interface AssignmentFile {
-  fileName: string;
-  fileType: string;
-  filePath: string;
-  fileSize: number;
-  uploadedAt: string;
-  downloadUrl?: string;
-}
-
-export interface Assignment {
-  id: number;
-  title: string;
-  content: string;
-  classId: number;
-  files: AssignmentFile[];
-  status: string;
-  startAt: string;
-  endAt: string;
-  createdAt: string;
-}
+import type { Assignment, AssignmentFile } from "../types/class";
 
 interface AssignmentCardProps {
   assignment: Assignment;
   opened: boolean;
   onClick: () => void;
-  getToken?: () => string;
+  getToken: () => string | null;
   onDelete?: (id: number) => void;
-  onEdit?: (assignment: Assignment) => void; // thêm dòng này
+  onEdit?: (assignment: Assignment) => void;
 }
 
 const statusColor = (status: string) => {
@@ -50,8 +30,13 @@ const statusColor = (status: string) => {
 
 const downloadAssignmentFile = async (
   file: AssignmentFile,
-  token: string
+  token: string | null
 ) => {
+  if (!token) {
+    alert("Authentication token not found");
+    return;
+  }
+
   try {
     const res = await fetch(
       `http://localhost:8080/education${file.downloadUrl}`,
@@ -118,7 +103,6 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
           ) : (
             <ChevronDownIcon className="h-6 w-6 text-gray-400" />
           )}
-          {/* Nút edit và xóa chỉ hiển thị khi card đang mở */}
           {opened && (
             <>
               <button
@@ -188,10 +172,10 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
                     <PaperClipIcon className="h-5 w-5 text-blue-400" />
                     <button
                       type="button"
-                      className="text-blue-700 hover:underline font-medium flex items-center"
+                      className="text-blue-700 hover:underline font-medium flex items-center italic"
                       onClick={async (e) => {
                         e.stopPropagation();
-                        if (getToken && file.downloadUrl) {
+                        if (file.downloadUrl) {
                           await downloadAssignmentFile(file, getToken());
                         }
                       }}

@@ -68,14 +68,25 @@ export interface Exam {
   createdAt: string;
 }
 
+export interface AssignmentFile {
+  fileName: string;
+  fileType: string;
+  filePath: string;
+  fileSize: number;
+  uploadedAt: string;
+  downloadUrl?: string;
+}
+
 export interface Assignment {
   id: number;
   title: string;
   content: string;
+  classId: number;
+  files: AssignmentFile[];
+  status: string;
   startAt: string;
   endAt: string;
   createdAt: string;
-  files: string[];
 }
 
 export interface TeacherFeature {
