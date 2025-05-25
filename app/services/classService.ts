@@ -8,6 +8,8 @@ import type {
   Question,
   Exam,
   Assignment,
+  StudentAttendance,
+  AttendanceHistory,
 } from "../types/class";
 
 const API_BASE_URL = "http://localhost:8080/education/api";
@@ -447,5 +449,39 @@ export const classService = {
     if (data.code !== 1000) {
       throw new Error(data.message || "Failed to delete document");
     }
+  },
+
+  // Get student attendance summary
+  getStudentAttendance: async (classId: string | undefined | null, token: string): Promise<StudentAttendance[]> => {
+    const validClassId = validateClassId(classId);
+    const response = await fetch(`${API_BASE_URL}/class-students/students/attendance/${validClassId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    const data: ApiResponse<StudentAttendance[]> = await response.json();
+    if (data.code === 1000) return data.result;
+    throw new Error(data.message || "Failed to fetch student attendance");
+  },
+
+  // Get attendance history for a specific date
+  getAttendanceHistory: async (
+    classId: string | undefined | null,
+    attendanceDate: string,
+    token: string
+  ): Promise<AttendanceHistory[]> => {
+    const validClassId = validateClassId(classId);
+    const response = await fetch(
+      `${API_BASE_URL}/attendance/class?classId=${validClassId}&attendanceDate=${attendanceDate}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    const data: ApiResponse<AttendanceHistory[]> = await response.json();
+    if (data.code === 1000) return data.result;
+    throw new Error(data.message || "Failed to fetch attendance history");
   },
 };

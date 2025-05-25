@@ -84,4 +84,27 @@ export interface TeacherFeature {
   icon: React.ReactNode;
   description: string;
   color: string;
+}
+
+export interface StudentAttendance {
+  presentNumber: number;
+  lateNumber: number;
+  absenceNumber: number;
+  userResponse: {
+    id: number;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    dob: string;
+  };
+}
+
+export interface AttendanceHistory {
+  id: number;
+  studentId: number;
+  studentName: string;
+  classId: number;
+  attendanceDate: string;
+  status: AttendanceStatus;
 } 

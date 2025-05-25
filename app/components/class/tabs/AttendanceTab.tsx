@@ -1,93 +1,103 @@
 import React, { useState, useEffect } from 'react';
-import { CalendarIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { CalendarIcon, CheckCircleIcon, XCircleIcon, ClockIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../contexts/AuthContext';
 import { classService } from '../../../services/classService';
-import type { Student, AttendanceRecord, AttendanceStatus } from '../../../types/class';
+import type { StudentAttendance, AttendanceHistory, AttendanceStatus, AttendanceRecord } from '../../../types/class';
 
 interface AttendanceTabProps {
   classId: string;
 }
 
 export const AttendanceTab: React.FC<AttendanceTabProps> = ({ classId }) => {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [studentAttendance, setStudentAttendance] = useState<StudentAttendance[]>([]);
+  const [attendanceHistory, setAttendanceHistory] = useState<AttendanceHistory[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState<boolean>(false);
   const { getToken } = useAuth();
 
+  const isToday = selectedDate === new Date().toISOString().split('T')[0];
+
   useEffect(() => {
-    fetchStudents();
+    fetchStudentAttendance();
   }, [classId]);
 
   useEffect(() => {
-    if (students.length > 0) {
-      fetchAttendanceRecords();
+    if (showHistory) {
+      fetchAttendanceHistory();
     }
-  }, [selectedDate, students]);
+  }, [selectedDate, showHistory]);
 
-  const fetchStudents = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const token = getToken();
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
-      const data = await classService.getStudents(classId, token);
-      setStudents(data);
-    } catch (err) {
-      console.error('Error fetching students:', err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'An error occurred while fetching students'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAttendanceRecords = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const token = getToken();
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
-      // Implement fetch attendance records logic here
-      // For now, we'll create empty records for each student
-      const records: AttendanceRecord[] = students.map(student => ({
-        studentId: student.id,
-        status: 'PRESENT' as AttendanceStatus
+  useEffect(() => {
+    if (isToday && studentAttendance.length > 0) {
+      // Initialize today's attendance records
+      const initialAttendance: AttendanceRecord[] = studentAttendance.map(student => ({
+        studentId: student.userResponse.id,
+        status: 'PRESENT'
       }));
-      setAttendanceRecords(records);
+      setTodayAttendance(initialAttendance);
+    }
+  }, [studentAttendance, isToday]);
+
+  const fetchStudentAttendance = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = getToken();
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const data = await classService.getStudentAttendance(classId, token);
+      setStudentAttendance(data);
     } catch (err) {
-      console.error('Error fetching attendance records:', err);
+      console.error('Error fetching student attendance:', err);
       setError(
         err instanceof Error
           ? err.message
-          : 'An error occurred while fetching attendance records'
+          : 'An error occurred while fetching student attendance'
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
-    setAttendanceRecords(prev =>
+  const fetchAttendanceHistory = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = getToken();
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const data = await classService.getAttendanceHistory(classId, selectedDate, token);
+      setAttendanceHistory(data);
+    } catch (err) {
+      console.error('Error fetching attendance history:', err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'An error occurred while fetching attendance history'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatusChange = (studentId: number, status: AttendanceStatus) => {
+    setTodayAttendance(prev =>
       prev.map(record =>
         record.studentId === studentId ? { ...record, status } : record
       )
     );
   };
 
-  const handleSubmit = async () => {
+  const handleSubmitAttendance = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -97,8 +107,12 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ classId }) => {
         throw new Error('Authentication token not found');
       }
 
-      await classService.submitAttendance(classId, selectedDate, attendanceRecords, token);
-      // Show success message or handle response
+      await classService.submitAttendance(classId, selectedDate, todayAttendance, token);
+      // Refresh attendance data after successful submission
+      await fetchStudentAttendance();
+      if (showHistory) {
+        await fetchAttendanceHistory();
+      }
     } catch (err) {
       console.error('Error submitting attendance:', err);
       setError(
@@ -162,113 +176,215 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ classId }) => {
             <CalendarIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
           <button
-            onClick={handleSubmit}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+            onClick={() => setShowHistory(!showHistory)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center"
           >
-            Submit Attendance
+            <EyeIcon className="h-5 w-5 mr-2" />
+            {showHistory ? 'Hide History' : 'View History'}
           </button>
+          {isToday && (
+            <button
+              onClick={handleSubmitAttendance}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+            >
+              Submit Attendance
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Student Name
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Status
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {students.map((student) => {
-              const record = attendanceRecords.find(
-                (r) => r.studentId === student.id
-              );
-              const status = record?.status || 'PRESENT';
-
-              return (
-                <tr key={student.id} className="hover:bg-gray-50">
+      {showHistory ? (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Student Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {attendanceHistory.map((record) => (
+                <tr key={record.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-800 font-medium text-sm">
-                          {student.firstName[0]}
-                          {student.lastName[0]}
-                        </span>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {student.firstName} {student.lastName}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {student.email}
-                        </div>
-                      </div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {record.studentName}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      {getStatusIcon(status)}
+                      {getStatusIcon(record.status)}
                       <span className="ml-2 text-sm text-gray-900">
-                        {status.charAt(0) + status.slice(1).toLowerCase()}
+                        {record.status.charAt(0) + record.status.slice(1).toLowerCase()}
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleStatusChange(student.id, 'PRESENT')}
-                        className={`px-3 py-1 rounded ${
-                          status === 'PRESENT'
-                            ? 'bg-green-100 text-green-800'
-                            : 'text-green-600 hover:bg-green-50'
-                        }`}
-                      >
-                        Present
-                      </button>
-                      <button
-                        onClick={() => handleStatusChange(student.id, 'ABSENT')}
-                        className={`px-3 py-1 rounded ${
-                          status === 'ABSENT'
-                            ? 'bg-red-100 text-red-800'
-                            : 'text-red-600 hover:bg-red-50'
-                        }`}
-                      >
-                        Absent
-                      </button>
-                      <button
-                        onClick={() => handleStatusChange(student.id, 'LATE')}
-                        className={`px-3 py-1 rounded ${
-                          status === 'LATE'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'text-yellow-600 hover:bg-yellow-50'
-                        }`}
-                      >
-                        Late
-                      </button>
-                    </div>
-                  </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Attendance Summary */}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h4 className="text-lg font-medium text-gray-900">Attendance Summary</h4>
+            </div>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Student Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Present
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Late
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Absent
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {studentAttendance.map((attendance) => (
+                  <tr key={attendance.userResponse.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-800 font-medium text-sm">
+                            {attendance.userResponse.firstName[0]}
+                            {attendance.userResponse.lastName[0]}
+                          </span>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {attendance.userResponse.firstName} {attendance.userResponse.lastName}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {attendance.userResponse.email}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{attendance.presentNumber}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{attendance.lateNumber}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{attendance.absenceNumber}</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Today's Attendance */}
+          {isToday && (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h4 className="text-lg font-medium text-gray-900">Today's Attendance</h4>
+              </div>
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Student Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {studentAttendance.map((attendance) => {
+                    const record = todayAttendance.find(
+                      (r) => r.studentId === attendance.userResponse.id
+                    );
+                    const status = record?.status || 'PRESENT';
+
+                    return (
+                      <tr key={attendance.userResponse.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="h-10 w-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-blue-800 font-medium text-sm">
+                                {attendance.userResponse.firstName[0]}
+                                {attendance.userResponse.lastName[0]}
+                              </span>
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {attendance.userResponse.firstName} {attendance.userResponse.lastName}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {attendance.userResponse.email}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {getStatusIcon(status)}
+                            <span className="ml-2 text-sm text-gray-900">
+                              {status.charAt(0) + status.slice(1).toLowerCase()}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleStatusChange(attendance.userResponse.id, 'PRESENT')}
+                              className={`px-3 py-1 rounded ${
+                                status === 'PRESENT'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'text-green-600 hover:bg-green-50'
+                              }`}
+                            >
+                              Present
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(attendance.userResponse.id, 'ABSENT')}
+                              className={`px-3 py-1 rounded ${
+                                status === 'ABSENT'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'text-red-600 hover:bg-red-50'
+                              }`}
+                            >
+                              Absent
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(attendance.userResponse.id, 'LATE')}
+                              className={`px-3 py-1 rounded ${
+                                status === 'LATE'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'text-yellow-600 hover:bg-yellow-50'
+                              }`}
+                            >
+                              Late
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 }; 
