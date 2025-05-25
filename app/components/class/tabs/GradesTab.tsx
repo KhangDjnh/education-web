@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChartBarIcon, ArrowDownTrayIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, ArrowDownTrayIcon, FunnelIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../contexts/AuthContext';
 import { classService } from '../../../services/classService';
 
@@ -143,10 +143,10 @@ export const GradesTab: React.FC<GradesTabProps> = ({ classId }) => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
+      <div className="flex justify-center items-center min-h-[400px] bg-white rounded-xl shadow-sm">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-2"></div>
-          <p className="text-gray-600">Loading grades...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading grades...</p>
         </div>
       </div>
     );
@@ -154,176 +154,189 @@ export const GradesTab: React.FC<GradesTabProps> = ({ classId }) => {
 
   if (error) {
     return (
-      <div
-        className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
-        role="alert"
-      >
-        <strong className="font-bold">Error! </strong>
-        <span className="block sm:inline">{error}</span>
+      <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-sm">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-red-800">Error</h3>
+            <div className="mt-1 text-sm text-red-700">{error}</div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!scoreSummary || scoreSummary.students.length === 0) {
     return (
-      <div className="text-center py-8 bg-gray-50 rounded-lg">
-        <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-lg font-medium text-gray-900">
-          No grades yet
-        </h3>
-        <p className="mt-1 text-sm text-gray-500">
-          Grades will appear here after students complete their exams.
+      <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-4">
+          <AcademicCapIcon className="h-8 w-8 text-blue-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Grades Available</h3>
+        <p className="text-gray-500 max-w-sm mx-auto">
+          Grades will appear here once students complete their exams. Check back later for updates.
         </p>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-gray-800">Grades</h3>
-        <div className="flex space-x-2">
-          <div className="relative">
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Class Grades</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              View and manage student grades across all exams
+            </p>
+          </div>
+          <div className="flex space-x-3">
             <button
               onClick={() => setSelectedExam(null)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-colors duration-200 ${
                 selectedExam === null
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               <FunnelIcon className="h-5 w-5 mr-2" />
               All Exams
             </button>
+            <button
+              onClick={handleExport}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center shadow-sm transition-colors duration-200"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+              Export Grades
+            </button>
           </div>
-          <button
-            onClick={handleExport}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-            Export Grades
-          </button>
         </div>
-      </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        {scoreSummary.exams.map((exam) => (
-          <button
-            key={exam.examId}
-            onClick={() => setSelectedExam(exam.examId)}
-            className={`px-3 py-1 rounded-full text-sm font-medium ${
-              selectedExam === exam.examId
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {exam.name}
-          </button>
-        ))}
-      </div>
+        <div className="mb-6">
+          <div className="flex flex-wrap gap-2">
+            {scoreSummary.exams.map((exam) => (
+              <button
+                key={exam.examId}
+                onClick={() => setSelectedExam(exam.examId)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  selectedExam === exam.examId
+                    ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {exam.name}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50"
-                >
-                  Student
-                </th>
-                {selectedExam === null ? (
-                  <>
-                    {scoreSummary.exams.map((exam) => (
-                      <th
-                        key={exam.examId}
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        {exam.name}
-                      </th>
-                    ))}
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Average
-                    </th>
-                  </>
-                ) : (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10"
                   >
-                    Score
+                    Student
                   </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {scoreSummary.students.map((student) => (
-                <tr key={student.studentId} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-800 font-medium text-sm">
-                          {student.fullName
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')}
-                        </span>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {student.fullName}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {formatDate(student.dob)}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
                   {selectedExam === null ? (
                     <>
                       {scoreSummary.exams.map((exam) => (
-                        <td key={exam.examId} className="px-6 py-4 whitespace-nowrap">
+                        <th
+                          key={exam.examId}
+                          scope="col"
+                          className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                        >
+                          {exam.name}
+                        </th>
+                      ))}
+                      <th
+                        scope="col"
+                        className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                      >
+                        Average
+                      </th>
+                    </>
+                  ) : (
+                    <th
+                      scope="col"
+                      className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                    >
+                      Score
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {scoreSummary.students.map((student) => (
+                  <tr key={student.studentId} className="hover:bg-gray-50 transition-colors duration-150">
+                    <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white z-10">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-800 font-medium text-sm">
+                            {student.fullName
+                              .split(' ')
+                              .map((n) => n[0])
+                              .join('')}
+                          </span>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {student.fullName}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {formatDate(student.dob)}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    {selectedExam === null ? (
+                      <>
+                        {scoreSummary.exams.map((exam) => (
+                          <td key={exam.examId} className="px-6 py-4 whitespace-nowrap">
+                            <div
+                              className={`text-sm font-medium ${getScoreColor(
+                                student.scores[exam.examId] || 0
+                              )}`}
+                            >
+                              {student.scores[exam.examId]?.toFixed(2) || '-'}
+                            </div>
+                          </td>
+                        ))}
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div
                             className={`text-sm font-medium ${getScoreColor(
-                              student.scores[exam.examId] || 0
+                              student.averageScore
                             )}`}
                           >
-                            {student.scores[exam.examId]?.toFixed(2) || '-'}
+                            {student.averageScore.toFixed(2)}
                           </div>
                         </td>
-                      ))}
+                      </>
+                    ) : (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div
                           className={`text-sm font-medium ${getScoreColor(
-                            student.averageScore
+                            student.scores[selectedExam] || 0
                           )}`}
                         >
-                          {student.averageScore.toFixed(2)}
+                          {student.scores[selectedExam]?.toFixed(2) || '-'}
                         </div>
                       </td>
-                    </>
-                  ) : (
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div
-                        className={`text-sm font-medium ${getScoreColor(
-                          student.scores[selectedExam] || 0
-                        )}`}
-                      >
-                        {student.scores[selectedExam]?.toFixed(2) || '-'}
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }; 
