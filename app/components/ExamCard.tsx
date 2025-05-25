@@ -1,15 +1,6 @@
 import React from "react";
 import { CalendarDaysIcon, ClockIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
-
-export interface Exam {
-  id: number;
-  title: string;
-  description: string;
-  classId: number;
-  startTime: string;
-  endTime: string;
-  createdAt: string;
-}
+import type { Exam } from "../types/class";
 
 interface ExamCardProps {
   exam: Exam;

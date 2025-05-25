@@ -75,6 +75,7 @@ export interface Exam {
   id: number;
   title: string;
   description: string;
+  classId: number;
   startTime: string;
   endTime: string;
   createdAt: string;

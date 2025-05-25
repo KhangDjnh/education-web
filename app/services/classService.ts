@@ -210,28 +210,116 @@ export const classService = {
     throw new Error(data.message || "Failed to fetch exams");
   },
 
-  createExam: async (
+  getExamById: async (examId: number, token: string): Promise<Exam> => {
+    const response = await fetch(`${API_BASE_URL}/exams/${examId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data: ApiResponse<Exam> = await response.json();
+    if (data.code === 1000) return data.result;
+    throw new Error(data.message || "Failed to fetch exam");
+  },
+
+  getExamQuestions: async (examId: number, token: string): Promise<{
+    content: Array<{
+      questionId: number;
+      question: string;
+      optionA: string;
+      optionB: string;
+      optionC: string;
+      optionD: string;
+    }>;
+    totalPages: number;
+    number: number;
+  }> => {
+    const response = await fetch(`${API_BASE_URL}/exams/${examId}/questions`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data: ApiResponse<{
+      content: Array<{
+        questionId: number;
+        question: string;
+        optionA: string;
+        optionB: string;
+        optionC: string;
+        optionD: string;
+      }>;
+      totalPages: number;
+      number: number;
+    }> = await response.json();
+    if (data.code === 1000) return data.result;
+    throw new Error(data.message || "Failed to fetch exam questions");
+  },
+
+  startExam: async (examId: number, token: string): Promise<Exam> => {
+    const response = await fetch(`${API_BASE_URL}/exams/${examId}/start`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data: ApiResponse<Exam> = await response.json();
+    if (data.code === 1000) return data.result;
+    throw new Error(data.message || "Failed to start exam");
+  },
+
+  updateExam: async (
+    examId: number,
     examData: {
-      classId: string | undefined | null;
+      classId: string;
       title: string;
       description: string;
-      questionIds: number[];
       startTime: string;
       endTime: string;
     },
     token: string
   ): Promise<Exam> => {
-    const validClassId = validateClassId(examData.classId);
-    const response = await fetch(`${API_BASE_URL}/exams/choose`, {
+    const response = await fetch(`${API_BASE_URL}/exams/${examId}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(examData),
+    });
+    const data: ApiResponse<Exam> = await response.json();
+    if (data.code === 1000) return data.result;
+    throw new Error(data.message || "Failed to update exam");
+  },
+
+  deleteExam: async (examId: number, token: string): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/exams/${examId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data = await response.json();
+    if (data.code !== 1000) {
+      throw new Error(data.message || "Failed to delete exam");
+    }
+  },
+
+  createExam: async (
+    examData: {
+      classId: string;
+      title: string;
+      description: string;
+      startTime: string;
+      endTime: string;
+    },
+    token: string
+  ): Promise<Exam> => {
+    const response = await fetch(`${API_BASE_URL}/exams`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        ...examData,
-        classId: validClassId,
-      }),
+      body: JSON.stringify(examData),
     });
     const data: ApiResponse<Exam> = await response.json();
     if (data.code === 1000) return data.result;
@@ -240,29 +328,25 @@ export const classService = {
 
   createRandomExam: async (
     examData: {
-      classId: string | undefined | null;
+      classId: string;
       title: string;
       description: string;
+      startTime: string;
+      endTime: string;
       numberOfEasyQuestions: string;
       numberOfMediumQuestions: string;
       numberOfHardQuestions: string;
       numberOfVeryHardQuestions: string;
-      startTime: string;
-      endTime: string;
     },
     token: string
   ): Promise<Exam> => {
-    const validClassId = validateClassId(examData.classId);
     const response = await fetch(`${API_BASE_URL}/exams/random`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        ...examData,
-        classId: validClassId,
-      }),
+      body: JSON.stringify(examData),
     });
     const data: ApiResponse<Exam> = await response.json();
     if (data.code === 1000) return data.result;
