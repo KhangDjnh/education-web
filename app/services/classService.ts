@@ -22,6 +22,28 @@ const validateClassId = (classId: string | undefined | null): string => {
   return classId;
 };
 
+interface ScoreSummary {
+  classId: number;
+  exams: Array<{
+    examId: number;
+    name: string;
+  }>;
+  students: Array<{
+    studentId: number;
+    fullName: string;
+    dob: string;
+    scores: Record<string, number>;
+    averageScore: number;
+  }>;
+}
+
+interface Score {
+  studentId: number;
+  classId: number;
+  score: number;
+  examId: number;
+}
+
 export const classService = {
   // Class data
   getClassData: async (classId: string | undefined | null, token: string): Promise<ClassData> => {
@@ -567,5 +589,54 @@ export const classService = {
     const data: ApiResponse<AttendanceHistory[]> = await response.json();
     if (data.code === 1000) return data.result;
     throw new Error(data.message || "Failed to fetch attendance history");
+  },
+
+  // Score APIs
+  getScoreSummary: async (classId: string | undefined | null, token: string): Promise<ScoreSummary> => {
+    const validClassId = validateClassId(classId);
+    const response = await fetch(`${API_BASE_URL}/scores/summary?classId=${validClassId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data: ApiResponse<ScoreSummary> = await response.json();
+    if (data.code === 1000) return data.result;
+    throw new Error(data.message || "Failed to fetch score summary");
+  },
+
+  getExamScores: async (examId: number, token: string): Promise<Score[]> => {
+    const response = await fetch(`${API_BASE_URL}/scores/${examId}/exams`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data: ApiResponse<Score[]> = await response.json();
+    if (data.code === 1000) return data.result;
+    throw new Error(data.message || "Failed to fetch exam scores");
+  },
+
+  getClassExamScores: async (classId: string | undefined | null, examId: number, token: string): Promise<Score[]> => {
+    const validClassId = validateClassId(classId);
+    const response = await fetch(`${API_BASE_URL}/scores/classes?classId=${validClassId}&examId=${examId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data: ApiResponse<Score[]> = await response.json();
+    if (data.code === 1000) return data.result;
+    throw new Error(data.message || "Failed to fetch class exam scores");
+  },
+
+  exportClassScores: async (classId: string | undefined | null, token: string): Promise<Blob> => {
+    const validClassId = validateClassId(classId);
+    const response = await fetch(`${API_BASE_URL}/scores/classes/${validClassId}/scores/export`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error("Failed to export scores");
+    }
+    return response.blob();
   },
 };

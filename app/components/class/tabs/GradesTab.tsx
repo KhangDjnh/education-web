@@ -1,41 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { ChartBarIcon, ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, ArrowDownTrayIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../contexts/AuthContext';
 import { classService } from '../../../services/classService';
-import type { Student } from '../../../types/class';
 
 interface GradesTabProps {
   classId: string;
 }
 
-interface Grade {
-  studentId: string;
-  studentName: string;
-  examId: string;
-  examTitle: string;
+interface Exam {
+  examId: number;
+  name: string;
+}
+
+interface StudentScore {
+  studentId: number;
+  fullName: string;
+  dob: string;
+  scores: Record<string, number>;
+  averageScore: number;
+}
+
+interface ScoreSummary {
+  classId: number;
+  exams: Exam[];
+  students: StudentScore[];
+}
+
+interface ExamScore {
+  studentId: number;
+  classId: number;
   score: number;
-  maxScore: number;
-  submittedAt: string;
+  examId: number;
 }
 
 export const GradesTab: React.FC<GradesTabProps> = ({ classId }) => {
-  const [grades, setGrades] = useState<Grade[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [scoreSummary, setScoreSummary] = useState<ScoreSummary | null>(null);
+  const [selectedExam, setSelectedExam] = useState<number | null>(null);
+  const [examScores, setExamScores] = useState<ExamScore[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const { getToken } = useAuth();
 
   useEffect(() => {
-    fetchStudents();
+    fetchScoreSummary();
   }, [classId]);
 
   useEffect(() => {
-    if (students.length > 0) {
-      fetchGrades();
+    if (selectedExam) {
+      fetchExamScores(selectedExam);
     }
-  }, [students]);
+  }, [selectedExam]);
 
-  const fetchStudents = async () => {
+  const fetchScoreSummary = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -45,21 +61,21 @@ export const GradesTab: React.FC<GradesTabProps> = ({ classId }) => {
         throw new Error('Authentication token not found');
       }
 
-      const data = await classService.getStudents(classId, token);
-      setStudents(data);
+      const data = await classService.getScoreSummary(classId, token);
+      setScoreSummary(data);
     } catch (err) {
-      console.error('Error fetching students:', err);
+      console.error('Error fetching score summary:', err);
       setError(
         err instanceof Error
           ? err.message
-          : 'An error occurred while fetching students'
+          : 'An error occurred while fetching score summary'
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchGrades = async () => {
+  const fetchExamScores = async (examId: number) => {
     try {
       setLoading(true);
       setError(null);
@@ -69,38 +85,44 @@ export const GradesTab: React.FC<GradesTabProps> = ({ classId }) => {
         throw new Error('Authentication token not found');
       }
 
-      // Implement fetch grades logic here
-      // For now, we'll create dummy data
-      const dummyGrades: Grade[] = students.map((student) => ({
-        studentId: student.id,
-        studentName: `${student.firstName} ${student.lastName}`,
-        examId: '1',
-        examTitle: 'Midterm Exam',
-        score: Math.floor(Math.random() * 100),
-        maxScore: 100,
-        submittedAt: new Date().toISOString(),
-      }));
-      setGrades(dummyGrades);
+      const data = await classService.getClassExamScores(classId, examId, token);
+      setExamScores(data);
     } catch (err) {
-      console.error('Error fetching grades:', err);
+      console.error('Error fetching exam scores:', err);
       setError(
         err instanceof Error
           ? err.message
-          : 'An error occurred while fetching grades'
+          : 'An error occurred while fetching exam scores'
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleExport = () => {
-    // Implement export logic here
-    console.log('Exporting grades...');
-  };
+  const handleExport = async () => {
+    try {
+      const token = getToken();
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
 
-  const handleImport = () => {
-    // Implement import logic here
-    console.log('Importing grades...');
+      const blob = await classService.exportClassScores(classId, token);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `class-${classId}-scores.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Error exporting scores:', err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'An error occurred while exporting scores'
+      );
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -111,11 +133,11 @@ export const GradesTab: React.FC<GradesTabProps> = ({ classId }) => {
     });
   };
 
-  const getGradeColor = (score: number, maxScore: number) => {
-    const percentage = (score / maxScore) * 100;
-    if (percentage >= 90) return 'text-green-600';
-    if (percentage >= 80) return 'text-blue-600';
-    if (percentage >= 70) return 'text-yellow-600';
+  const getScoreColor = (score: number) => {
+    if (score >= 9) return 'text-green-600';
+    if (score >= 8) return 'text-blue-600';
+    if (score >= 7) return 'text-yellow-600';
+    if (score >= 6) return 'text-orange-600';
     return 'text-red-600';
   };
 
@@ -142,11 +164,38 @@ export const GradesTab: React.FC<GradesTabProps> = ({ classId }) => {
     );
   }
 
+  if (!scoreSummary || scoreSummary.students.length === 0) {
+    return (
+      <div className="text-center py-8 bg-gray-50 rounded-lg">
+        <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400" />
+        <h3 className="mt-2 text-lg font-medium text-gray-900">
+          No grades yet
+        </h3>
+        <p className="mt-1 text-sm text-gray-500">
+          Grades will appear here after students complete their exams.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-bold text-gray-800">Grades</h3>
         <div className="flex space-x-2">
+          <div className="relative">
+            <button
+              onClick={() => setSelectedExam(null)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center ${
+                selectedExam === null
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <FunnelIcon className="h-5 w-5 mr-2" />
+              All Exams
+            </button>
+          </div>
           <button
             onClick={handleExport}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center"
@@ -154,65 +203,72 @@ export const GradesTab: React.FC<GradesTabProps> = ({ classId }) => {
             <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
             Export Grades
           </button>
-          <button
-            onClick={handleImport}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center"
-          >
-            <ArrowUpTrayIcon className="h-5 w-5 mr-2" />
-            Import Grades
-          </button>
         </div>
       </div>
 
-      {grades.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 rounded-lg">
-          <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium text-gray-900">
-            No grades yet
-          </h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Grades will appear here after students complete their exams.
-          </p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="mb-4 flex flex-wrap gap-2">
+        {scoreSummary.exams.map((exam) => (
+          <button
+            key={exam.examId}
+            onClick={() => setSelectedExam(exam.examId)}
+            className={`px-3 py-1 rounded-full text-sm font-medium ${
+              selectedExam === exam.examId
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {exam.name}
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50"
                 >
                   Student
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Exam
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Score
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Submitted
-                </th>
+                {selectedExam === null ? (
+                  <>
+                    {scoreSummary.exams.map((exam) => (
+                      <th
+                        key={exam.examId}
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        {exam.name}
+                      </th>
+                    ))}
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Average
+                    </th>
+                  </>
+                ) : (
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Score
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {grades.map((grade) => (
-                <tr key={`${grade.studentId}-${grade.examId}`} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+              {scoreSummary.students.map((student) => (
+                <tr key={student.studentId} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white">
                     <div className="flex items-center">
                       <div className="h-10 w-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
                         <span className="text-blue-800 font-medium text-sm">
-                          {grade.studentName
+                          {student.fullName
                             .split(' ')
                             .map((n) => n[0])
                             .join('')}
@@ -220,33 +276,54 @@ export const GradesTab: React.FC<GradesTabProps> = ({ classId }) => {
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {grade.studentName}
+                          {student.fullName}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {formatDate(student.dob)}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{grade.examTitle}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div
-                      className={`text-sm font-medium ${getGradeColor(
-                        grade.score,
-                        grade.maxScore
-                      )}`}
-                    >
-                      {grade.score} / {grade.maxScore}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(grade.submittedAt)}
-                  </td>
+                  {selectedExam === null ? (
+                    <>
+                      {scoreSummary.exams.map((exam) => (
+                        <td key={exam.examId} className="px-6 py-4 whitespace-nowrap">
+                          <div
+                            className={`text-sm font-medium ${getScoreColor(
+                              student.scores[exam.examId] || 0
+                            )}`}
+                          >
+                            {student.scores[exam.examId]?.toFixed(2) || '-'}
+                          </div>
+                        </td>
+                      ))}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div
+                          className={`text-sm font-medium ${getScoreColor(
+                            student.averageScore
+                          )}`}
+                        >
+                          {student.averageScore.toFixed(2)}
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div
+                        className={`text-sm font-medium ${getScoreColor(
+                          student.scores[selectedExam] || 0
+                        )}`}
+                      >
+                        {student.scores[selectedExam]?.toFixed(2) || '-'}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
+      </div>
     </>
   );
 }; 
