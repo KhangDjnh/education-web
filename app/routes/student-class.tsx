@@ -25,6 +25,7 @@ import ClassFeatures from "../components/student-class/ClassFeatures";
 import DocumentsTab from "../components/student-class/DocumentsTab";
 import LeaveRequestTab from "../components/student-class/LeaveRequestTab";
 import AssignmentsTab from "../components/student-class/AssignmentsTab";
+import ExamsTab from "../components/student-class/ExamsTab";
 
 interface ClassDetail {
   id: number;
@@ -55,7 +56,7 @@ interface LeaveRequest {
   createdAt: string;
 }
 
-type TabType = 'overview' | 'documents' | 'leave-requests' | 'assignments';
+type TabType = 'overview' | 'documents' | 'leave-requests' | 'assignments' | 'exams';
 
 export default function StudentClassPage() {
   const { classId } = useParams<{ classId: string }>();
@@ -315,6 +316,16 @@ export default function StudentClassPage() {
               >
                 Nghỉ phép
               </button>
+              <button
+                onClick={() => setActiveTab('exams')}
+                className={`${
+                  activeTab === 'exams'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+              >
+                Bài thi
+              </button>
             </nav>
           </div>
         </div>
@@ -331,6 +342,7 @@ export default function StudentClassPage() {
           {activeTab === 'documents' && <DocumentsTab classId={classDetail.id} />}
           {activeTab === 'assignments' && <AssignmentsTab classId={classDetail.id} />}
           {activeTab === 'leave-requests' && <LeaveRequestTab classId={classDetail.id} />}
+          {activeTab === 'exams' && <ExamsTab classId={classDetail.id} />}
         </div>
       </main>
       <Footer />
