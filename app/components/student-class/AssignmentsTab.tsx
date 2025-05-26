@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { PencilSquareIcon, ArrowUpTrayIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { PencilSquareIcon, ArrowUpTrayIcon, TrashIcon, XMarkIcon, EyeIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../../contexts/AuthContext";
 import StudentAssignmentCard from "../../components/StudentAssignmentCard";
+import StudentSubmissionCard from "./StudentSubmissionCard";
 
 interface Assignment {
   id: number;
@@ -49,6 +50,7 @@ interface AssignmentsTabProps {
 export default function AssignmentsTab({ classId }: AssignmentsTabProps) {
   const { getToken, user } = useAuth();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [submissions, setSubmissions] = useState<Record<number, Submission>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -59,12 +61,11 @@ export default function AssignmentsTab({ classId }: AssignmentsTabProps) {
     title: "",
     content: "",
   });
-  const [submissions, setSubmissions] = useState<Record<number, Submission>>({});
-  const [showSubmission, setShowSubmission] = useState<number | null>(null);
   const [submissionSuccess, setSubmissionSuccess] = useState<{ message: string; submission: Submission } | null>(null);
 
   useEffect(() => {
     fetchAssignments();
+    fetchSubmissions();
   }, [classId]);
 
   const fetchAssignments = async () => {
@@ -79,10 +80,6 @@ export default function AssignmentsTab({ classId }: AssignmentsTabProps) {
       const data = await res.json();
       if (data.code === 1000) {
         setAssignments(data.result);
-        // Fetch submissions for each assignment
-        data.result.forEach((assignment: Assignment) => {
-          fetchSubmission(assignment.id);
-        });
       } else {
         setError(data.message || "Không thể tải danh sách bài tập.");
       }
@@ -93,22 +90,25 @@ export default function AssignmentsTab({ classId }: AssignmentsTabProps) {
     }
   };
 
-  const fetchSubmission = async (assignmentId: number) => {
+  const fetchSubmissions = async () => {
+    if (!user?.id) return;
+    
     try {
       const token = getToken();
       const res = await fetch(
-        `http://localhost:8080/education/api/submissions/assignment/${assignmentId}/student/${user?.id}`,
+        `http://localhost:8080/education/api/submissions/class/${classId}/student/${user.id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
-      if (data.code === 1000 && data.result) {
-        setSubmissions(prev => ({
-          ...prev,
-          [assignmentId]: data.result
-        }));
+      if (data.code === 1000) {
+        const submissionsMap: Record<number, Submission> = {};
+        data.result.forEach((submission: Submission) => {
+          submissionsMap[submission.assignmentId] = submission;
+        });
+        setSubmissions(submissionsMap);
       }
     } catch (error) {
-      console.error("Error fetching submission:", error);
+      console.error("Error fetching submissions:", error);
     }
   };
 
@@ -156,7 +156,7 @@ export default function AssignmentsTab({ classId }: AssignmentsTabProps) {
           submission: data.result
         });
         // Refresh submissions
-        fetchSubmission(assignmentId);
+        fetchSubmissions();
         // Hide success message after 3 seconds
         setTimeout(() => setSubmissionSuccess(null), 3000);
       } else {
@@ -193,7 +193,6 @@ export default function AssignmentsTab({ classId }: AssignmentsTabProps) {
           delete newSubmissions[assignmentId];
           return newSubmissions;
         });
-        setShowSubmission(null);
       } else {
         throw new Error(data.message || "Failed to delete submission");
       }
@@ -204,6 +203,7 @@ export default function AssignmentsTab({ classId }: AssignmentsTabProps) {
 
   const handleAssignmentClick = (assignmentId: number) => {
     setOpenedAssignment(openedAssignment === assignmentId ? null : assignmentId);
+    setSelectedAssignment(null); // Reset submission form when closing assignment
   };
 
   return (
@@ -255,151 +255,103 @@ export default function AssignmentsTab({ classId }: AssignmentsTabProps) {
                   getToken={getToken}
                   onSubmissionClick={() => setSelectedAssignment(assignment.id)}
                   hasSubmission={!!submissions[assignment.id]}
-                  onViewSubmission={() => setShowSubmission(showSubmission === assignment.id ? null : assignment.id)}
+                  onViewSubmission={() => setSelectedAssignment(assignment.id)}
                 />
                 
-                {/* Submission Form */}
-                {selectedAssignment === assignment.id && (
+                {/* Assignment Content and Submission Section */}
+                {openedAssignment === assignment.id && (
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Nộp bài</h3>
-                    <div className="space-y-4">
+                    {/* Show submission if exists */}
+                    {submissions[assignment.id] ? (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Tiêu đề bài nộp
-                        </label>
-                        <input
-                          type="text"
-                          value={submissionForm.title}
-                          onChange={(e) => setSubmissionForm(prev => ({ ...prev, title: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Nhập tiêu đề bài nộp"
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                            <EyeIcon className="h-5 w-5 mr-2 text-blue-500" />
+                            Bài nộp của bạn
+                          </h3>
+                        </div>
+                        <StudentSubmissionCard
+                          submission={submissions[assignment.id]}
+                          getToken={getToken}
+                          onDelete={(submissionId) => handleDeleteSubmission(submissionId, assignment.id)}
                         />
                       </div>
+                    ) : (
+                      /* Show submission form if no submission exists */
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Nội dung bài nộp
-                        </label>
-                        <textarea
-                          value={submissionForm.content}
-                          onChange={(e) => setSubmissionForm(prev => ({ ...prev, content: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          rows={4}
-                          placeholder="Nhập nội dung bài nộp"
-                        />
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <input
-                          type="file"
-                          onChange={handleFileSelect}
-                          className="block w-full text-sm text-gray-500
-                            file:mr-4 file:py-2 file:px-4
-                            file:rounded-full file:border-0
-                            file:text-sm file:font-semibold
-                            file:bg-blue-50 file:text-blue-700
-                            hover:file:bg-blue-100"
-                        />
-                        <button
-                          onClick={() => handleSubmit(assignment.id)}
-                          disabled={!selectedFile || submitting || !submissionForm.title || !submissionForm.content}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
-                        >
-                          {submitting ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                              Đang nộp...
-                            </>
-                          ) : (
-                            <>
-                              <ArrowUpTrayIcon className="h-5 w-5 mr-2" />
-                              Nộp bài
-                            </>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-3">Nộp bài</h3>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Tiêu đề bài nộp
+                            </label>
+                            <input
+                              type="text"
+                              value={submissionForm.title}
+                              onChange={(e) => setSubmissionForm(prev => ({ ...prev, title: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Nhập tiêu đề bài nộp"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Nội dung bài nộp
+                            </label>
+                            <textarea
+                              value={submissionForm.content}
+                              onChange={(e) => setSubmissionForm(prev => ({ ...prev, content: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                              rows={4}
+                              placeholder="Nhập nội dung bài nộp"
+                            />
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <input
+                              type="file"
+                              onChange={handleFileSelect}
+                              className="block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-blue-50 file:text-blue-700
+                                hover:file:bg-blue-100"
+                            />
+                            <button
+                              onClick={() => handleSubmit(assignment.id)}
+                              disabled={!selectedFile || submitting || !submissionForm.title || !submissionForm.content}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
+                            >
+                              {submitting ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                                  Đang nộp...
+                                </>
+                              ) : (
+                                <>
+                                  <ArrowUpTrayIcon className="h-5 w-5 mr-2" />
+                                  Nộp bài
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedAssignment(null);
+                                setSelectedFile(null);
+                                setSubmissionForm({ title: "", content: "" });
+                              }}
+                              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                            >
+                              Hủy
+                            </button>
+                          </div>
+                          {selectedFile && (
+                            <p className="text-sm text-gray-600">
+                              Đã chọn: {selectedFile.name}
+                            </p>
                           )}
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedAssignment(null);
-                            setSelectedFile(null);
-                            setSubmissionForm({ title: "", content: "" });
-                          }}
-                          className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                        >
-                          Hủy
-                        </button>
-                      </div>
-                      {selectedFile && (
-                        <p className="text-sm text-gray-600">
-                          Đã chọn: {selectedFile.name}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Submission History */}
-                {showSubmission === assignment.id && submissions[assignment.id] && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="text-lg font-semibold text-gray-800">Bài nộp của bạn</h3>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleDeleteSubmission(submissions[assignment.id].id, assignment.id)}
-                          className="p-1 text-red-600 hover:text-red-800"
-                          title="Xóa bài nộp"
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 shadow">
-                      <div className="mb-3">
-                        <span className="font-semibold text-gray-700">Tiêu đề:</span>
-                        <span className="ml-2 text-gray-800">{submissions[assignment.id].title}</span>
-                      </div>
-                      <div className="mb-3">
-                        <span className="font-semibold text-gray-700">Nội dung:</span>
-                        <div className="mt-1 text-gray-800">{submissions[assignment.id].content}</div>
-                      </div>
-                      <div className="mb-3">
-                        <span className="font-semibold text-gray-700">Thời gian nộp:</span>
-                        <span className="ml-2 text-gray-600">
-                          {new Date(submissions[assignment.id].submittedAt).toLocaleString("vi-VN")}
-                        </span>
-                      </div>
-                      {submissions[assignment.id].grade !== null && (
-                        <div className="mb-3">
-                          <span className="font-semibold text-gray-700">Điểm:</span>
-                          <span className="ml-2 text-gray-800">{submissions[assignment.id].grade}</span>
                         </div>
-                      )}
-                      {submissions[assignment.id].feedback && (
-                        <div className="mb-3">
-                          <span className="font-semibold text-gray-700">Nhận xét:</span>
-                          <div className="mt-1 text-gray-800">{submissions[assignment.id].feedback}</div>
-                        </div>
-                      )}
-                      {submissions[assignment.id].files.length > 0 && (
-                        <div>
-                          <span className="font-semibold text-gray-700">File đính kèm:</span>
-                          <ul className="mt-2 space-y-2">
-                            {submissions[assignment.id].files.map((file, idx) => (
-                              <li key={idx} className="flex items-center gap-2">
-                                <a
-                                  href={`http://localhost:8080/education${file.downloadUrl}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline"
-                                >
-                                  {file.fileName}
-                                </a>
-                                <span className="text-xs text-gray-400">
-                                  ({(file.fileSize / 1024).toFixed(1)} KB)
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
