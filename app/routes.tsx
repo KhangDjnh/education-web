@@ -11,5 +11,6 @@ export default [
   route("/class/:classId", "routes/class.tsx"),
   route("student/class/:classId", "routes/student-class.tsx"),
   route("/exam/:examId", "routes/exam-taking.tsx"),
-  route("/exam-result/:submissionId", "routes/exam-result.tsx")
+  route("/exam-result/:submissionId", "routes/exam-result.tsx"),
+  route("/assignments/:assignmentId/grade", "routes/AssignmentGradingPage.tsx"),
 ] satisfies RouteConfig; 

@@ -8,8 +8,10 @@ import {
   ArrowDownTrayIcon,
   TrashIcon,
   PencilSquareIcon,
+  AcademicCapIcon,
 } from "@heroicons/react/24/outline";
 import type { Assignment, AssignmentFile } from "../types/class";
+import { useNavigate } from "react-router-dom";
 
 interface AssignmentCardProps {
   assignment: Assignment;
@@ -70,6 +72,13 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
   onDelete,
   onEdit,
 }) => {
+  const navigate = useNavigate();
+
+  const handleGradeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/assignments/${assignment.id}/grade`);
+  };
+
   return (
     <div
       className={`rounded-xl shadow-md border transition-all cursor-pointer bg-white mb-4 ${
@@ -131,6 +140,14 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
               >
                 <TrashIcon className="h-6 w-6 text-red-500" />
               </button>
+              <button
+                type="button"
+                className="ml-2 p-1 rounded hover:bg-blue-100"
+                title="Chấm bài"
+                onClick={handleGradeClick}
+              >
+                <AcademicCapIcon className="h-6 w-6 text-blue-500" />
+              </button>
             </>
           )}
         </div>
@@ -177,6 +194,8 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
                         e.stopPropagation();
                         if (file.downloadUrl) {
                           await downloadAssignmentFile(file, getToken());
+                        } else {
+                          alert("Download URL not available");
                         }
                       }}
                     >

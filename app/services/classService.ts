@@ -51,6 +51,28 @@ interface CreateClassData {
   description: string;
 }
 
+interface Submission {
+  id: number;
+  title: string;
+  content: string;
+  submittedAt: string;
+  grade: number | null;
+  feedback: string | null;
+  assignmentId: number;
+  studentId: number;
+  files: SubmissionFile[];
+}
+
+interface SubmissionFile {
+  id: number;
+  fileName: string;
+  filePath: string;
+  fileType: string;
+  downloadUrl: string;
+  fileSize: number;
+  uploadedAt: string;
+}
+
 export const classService = {
   // Class data
   getClassData: async (classId: string | undefined | null, token: string): Promise<ClassData> => {
@@ -659,5 +681,26 @@ export const classService = {
     const data: ApiResponse<ClassData> = await response.json();
     if (data.code === 1000) return data.result;
     throw new Error(data.message || 'Failed to create class');
+  },
+
+  async getAssignmentSubmissions(assignmentId: string, token: string): Promise<{ code: number; message: string; result: Submission[] }> {
+    const response = await fetch(`${API_BASE_URL}/submissions/assignment/${assignmentId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    return data;
+  },
+
+  async submitGrade(submissionId: number, grade: number, feedback: string | null, token: string): Promise<{ code: number; message: string; result: Submission }> {
+    const response = await fetch(`${API_BASE_URL}/submissions/${submissionId}/grade`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ grade: grade.toFixed(2), feedback }),
+    });
+    const data = await response.json();
+    return data;
   },
 };
